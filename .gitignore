@@ -1,0 +1,22 @@
+# ===== OS / File manager =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ===== Editors / IDE =====
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ===== Logs / temp =====
+*.log
+*.tmp
+*.temp
+
+# ===== Generic build folders =====
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/

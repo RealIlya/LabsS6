@@ -1,0 +1,17 @@
+# ===== Local .NET SDK / caches =====
+/.dotnet/
+/.dotnet_cli/
+/.nuget/
+
+# ===== Build output =====
+/build/
+**/bin/
+**/obj/
+**/TestResults/
+
+# ===== IDE user files =====
+*.user
+*.suo
+
+# ===== Generated lab artifacts =====
+/lab1/_extracted_lab1/
