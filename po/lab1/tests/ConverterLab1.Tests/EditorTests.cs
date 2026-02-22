@@ -68,4 +68,33 @@ public class EditorTests
         var result = ed.DoEdit(16);
         Assert.Equal("3.", result);
     }
+
+    [Fact]
+    public void ToggleSign_FromZero_ReturnsMinusZero()
+    {
+        var ed = new Editor();
+        var result = ed.ToggleSign();
+        Assert.Equal("-0", result);
+    }
+
+    [Fact]
+    public void AddDigit_AfterMinusZero_ReplacesZeroAndKeepsSign()
+    {
+        var ed = new Editor();
+        ed.ToggleSign();
+        var result = ed.AddDigit(5);
+        Assert.Equal("-5", result);
+    }
+
+    [Fact]
+    public void DoEdit_Command20_TogglesSign()
+    {
+        var ed = new Editor();
+        ed.AddDigit(9);
+        var negative = ed.DoEdit(20);
+        var positive = ed.DoEdit(20);
+
+        Assert.Equal("-9", negative);
+        Assert.Equal("9", positive);
+    }
 }

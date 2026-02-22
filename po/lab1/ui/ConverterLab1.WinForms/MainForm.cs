@@ -91,36 +91,52 @@ public class MainForm : Form
 
         var panel = new TableLayoutPanel();
         panel.SetBounds(20, 275, 380, 250);
-        panel.ColumnCount = 4;
-        panel.RowCount = 5;
+        panel.ColumnCount = 5;
+        panel.RowCount = 6;
         panel.GrowStyle = TableLayoutPanelGrowStyle.FixedSize;
         panel.Padding = new Padding(0);
 
-        for (var i = 0; i < 4; i++)
+        for (var i = 0; i < panel.ColumnCount; i++)
         {
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
         }
 
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < panel.RowCount; i++)
         {
-            panel.RowStyles.Add(new RowStyle(SizeType.Percent, 20f));
+            panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f / panel.RowCount));
         }
 
-        var captions = new[]
+        var layout = new (string Text, int Tag, int Col, int Row)[]
         {
-            "0", "1", "2", "3",
-            "4", "5", "6", "7",
-            "8", "9", "A", "B",
-            "C", "D", "E", "F",
-            ".", "BS", "CL", "Execute"
+            ("A", 10, 0, 0),
+            ("B", 11, 0, 1),
+            ("C", 12, 0, 2),
+            ("D", 13, 0, 3),
+            ("E", 14, 0, 4),
+            ("F", 15, 0, 5),
+            ("CL", 18, 3, 0),
+            ("BS", 17, 4, 0),
+            ("7", 7, 1, 2),
+            ("8", 8, 2, 2),
+            ("9", 9, 3, 2),
+            ("4", 4, 1, 3),
+            ("5", 5, 2, 3),
+            ("6", 6, 3, 3),
+            ("1", 1, 1, 4),
+            ("2", 2, 2, 4),
+            ("3", 3, 3, 4),
+            ("+/-", 20, 1, 5),
+            ("0", 0, 2, 5),
+            (".", 16, 3, 5),
+            ("Execute", 19, 4, 5)
         };
 
-        for (var i = 0; i < captions.Length; i++)
+        foreach (var key in layout)
         {
-            var button = CreateButton(captions[i], i);
-            panel.Controls.Add(button, i % 4, i / 4);
+            var button = CreateButton(key.Text, key.Tag);
+            panel.Controls.Add(button, key.Col, key.Row);
 
-            if (i <= 15)
+            if (key.Tag <= 15)
             {
                 digitButtons.Add(button);
             }
@@ -298,6 +314,11 @@ public class MainForm : Form
             i = 16;
         }
 
+        if (e.KeyChar == '-')
+        {
+            i = 20;
+        }
+
         if ((int)e.KeyChar == 8)
         {
             i = 17;
@@ -329,6 +350,11 @@ public class MainForm : Form
         if (e.KeyCode == Keys.Decimal || e.KeyCode == Keys.OemPeriod || e.KeyCode == Keys.Oemcomma)
         {
             DoCmnd(16);
+        }
+
+        if (e.KeyCode == Keys.OemMinus || e.KeyCode == Keys.Subtract)
+        {
+            DoCmnd(20);
         }
     }
 }

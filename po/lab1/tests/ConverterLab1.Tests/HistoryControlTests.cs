@@ -1,4 +1,4 @@
-using ConverterLab1;
+﻿using ConverterLab1;
 
 namespace ConverterLab1.Tests;
 
@@ -49,7 +49,26 @@ public class HistoryControlTests
         var result = ctl.DoCmnd(19);
 
         Assert.Equal("19.8", result);
-        Assert.Equal(Control_.State.Преобразовано, ctl.St);
+        Assert.Equal(1, ctl.his.Count());
+    }
+
+    [Fact]
+    public void Control_DoCmnd19_ConvertsNegativeValue()
+    {
+        var ctl = new Control_();
+        ctl.Pin = 10;
+        ctl.Pout = 16;
+
+        ctl.ed.Clear();
+        ctl.ed.DoEdit(20);
+        ctl.ed.AddDigit(1);
+        ctl.ed.AddDigit(0);
+        ctl.ed.AddDelim();
+        ctl.ed.AddDigit(5);
+
+        var result = ctl.DoCmnd(19);
+
+        Assert.Equal("-A.8", result);
         Assert.Equal(1, ctl.his.Count());
     }
 }

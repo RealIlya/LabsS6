@@ -5,6 +5,7 @@ public class Editor
     private string number = "0";
     private const string delim = ".";
     private const string zero = "0";
+    private const string minusZero = "-0";
 
     public string Number
     {
@@ -22,6 +23,10 @@ public class Editor
         if (number == zero)
         {
             number = ch;
+        }
+        else if (number == minusZero)
+        {
+            number = "-" + ch;
         }
         else
         {
@@ -44,7 +49,7 @@ public class Editor
 
     public string AddZero()
     {
-        if (number != zero)
+        if (number != zero && number != minusZero)
         {
             number += zero;
         }
@@ -86,6 +91,23 @@ public class Editor
         return number;
     }
 
+    public string ToggleSign()
+    {
+        if (number.StartsWith("-", StringComparison.Ordinal))
+        {
+            number = number[1..];
+            if (number.Length == 0)
+            {
+                number = zero;
+            }
+
+            return number;
+        }
+
+        number = "-" + number;
+        return number;
+    }
+
     public string DoEdit(int j)
     {
         if (j < 0)
@@ -116,6 +138,11 @@ public class Editor
         if (j == 18)
         {
             return Clear();
+        }
+
+        if (j == 20)
+        {
+            return ToggleSign();
         }
 
         return number;
