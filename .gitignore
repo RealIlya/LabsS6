@@ -1,3 +1,5 @@
+_tmp*
+
 # ===== OS / File manager =====
 .DS_Store
 Thumbs.db
