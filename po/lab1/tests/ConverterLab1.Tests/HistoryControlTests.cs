@@ -71,4 +71,28 @@ public class HistoryControlTests
         Assert.Equal("-A.8", result);
         Assert.Equal(1, ctl.his.Count());
     }
+
+    [Fact]
+    public void Control_RecalculateWithoutHistory_RecalculatesButDoesNotWriteHistory()
+    {
+        var ctl = new Control_();
+        ctl.Pin = 10;
+        ctl.Pout = 16;
+
+        ctl.ed.Clear();
+        ctl.ed.AddDigit(2);
+        ctl.ed.AddDigit(5);
+        ctl.ed.AddDelim();
+        ctl.ed.AddDigit(5);
+
+        var initial = ctl.DoCmnd(19);
+        Assert.Equal("19.8", initial);
+        Assert.Equal(1, ctl.his.Count());
+
+        ctl.Pout = 2;
+        var recalculated = ctl.RecalculateWithoutHistory();
+
+        Assert.Equal("11001.1", recalculated);
+        Assert.Equal(1, ctl.his.Count());
+    }
 }

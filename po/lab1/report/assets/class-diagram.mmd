@@ -1,0 +1,45 @@
+classDiagram
+    class MainForm
+    class HistoryForm
+    class AboutForm
+    class Control_ {
+      +Pin: int
+      +Pout: int
+      +St: State
+      +DoCmnd(j): string
+      +RecalculateWithoutHistory(): string
+    }
+    class Editor {
+      +Number: string
+      +DoEdit(j): string
+      +Acc(): int
+    }
+    class History {
+      +AddRecord(...)
+      +Count(): int
+      +this[i]: Record
+    }
+    class Record {
+      +p1: int
+      +p2: int
+      +number1: string
+      +number2: string
+    }
+    class Conver_P_10 {
+      <<static>>
+      +dval(pNum, p): double
+    }
+    class Conver_10_P {
+      <<static>>
+      +Do(n, p, c): string
+    }
+
+    MainForm --> Control_ : uses
+    MainForm --> HistoryForm : opens
+    MainForm --> AboutForm : opens
+    HistoryForm --> History : reads
+    Control_ *-- Editor : composition
+    Control_ *-- History : composition
+    History o-- Record : contains
+    Control_ ..> Conver_P_10 : depends
+    Control_ ..> Conver_10_P : depends

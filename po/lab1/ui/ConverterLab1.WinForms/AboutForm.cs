@@ -12,7 +12,7 @@ public class AboutForm : Form
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
-        ClientSize = new Size(420, 180);
+        ClientSize = new Size(420, 220);
 
         var title = new Label();
         title.Text = "Конвертор p1_p2";
@@ -26,9 +26,9 @@ public class AboutForm : Form
         desc.Location = new Point(20, 65);
 
         var authors = new Label();
-        authors.Text = "Лабораторная работа №1";
+        authors.Text = "Бригада №2:\nВЕСЕЛЫЙ ДЕНИС\nВОРОНЧУК ИЛЬЯ\nЛЫКОВА МАРИЯ";
         authors.AutoSize = true;
-        authors.Location = new Point(20, 120);
+        authors.Location = new Point(20, 115);
 
         Controls.Add(title);
         Controls.Add(desc);
