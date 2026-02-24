@@ -1,5 +1,9 @@
 _tmp*
 
+out
+
+__pycache__
+
 # ===== OS / File manager =====
 .DS_Store
 Thumbs.db
