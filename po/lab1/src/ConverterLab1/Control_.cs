@@ -30,15 +30,21 @@ public class Control_
         if (j == 19)
         {
             var input = ed.Number;
-            var decimalValue = Conver_P_10.dval(input, Pin);
-            var result = Conver_10_P.Do(decimalValue, Pout, acc());
-            St = State.Преобразовано;
+            var result = RecalculateWithoutHistory();
             his.ДобавитьЗапись(Pin, Pout, input, result);
             return result;
         }
 
         St = State.Редактирование;
         return ed.DoEdit(j);
+    }
+
+    public string RecalculateWithoutHistory()
+    {
+        var decimalValue = Conver_P_10.dval(ed.Number, Pin);
+        var result = Conver_10_P.Do(decimalValue, Pout, acc());
+        St = State.Преобразовано;
+        return result;
     }
 
     private int acc()

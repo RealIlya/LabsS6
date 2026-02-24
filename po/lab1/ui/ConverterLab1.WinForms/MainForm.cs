@@ -233,9 +233,15 @@ public class MainForm : Form
         labelP2.Text = $"Основание с. сч. результата {trackBar2.Value}";
         ctl.Pout = trackBar2.Value;
 
+        if (ctl.St != Control_.State.Преобразовано)
+        {
+            labelOutput.Text = "0";
+            return;
+        }
+
         try
         {
-            labelOutput.Text = ctl.DoCmnd(19);
+            labelOutput.Text = ctl.RecalculateWithoutHistory();
         }
         catch
         {
