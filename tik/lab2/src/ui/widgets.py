@@ -34,6 +34,7 @@ class ByteField(ttk.LabelFrame):
             ttk.Label(self, text=caption).grid(row=1 + idx, column=0, sticky="nw", padx=(0, 6))
             box = ScrolledText(self, height=height, width=90, wrap="word")
             box.grid(row=1 + idx, column=1, sticky="nsew", pady=2)
+            self._attach_edit_shortcuts(box)
             self.boxes[rep] = box
 
         btns = ttk.Frame(self)
@@ -65,6 +66,12 @@ class ByteField(ttk.LabelFrame):
         self._set_box("text", bytes_to_text(data))
         self._set_box("hex", bytes_to_hex(data))
         self._set_box("bin", bytes_to_bin(data))
+        # Для бинарных данных удобнее сразу использовать HEX как источник,
+        # иначе в SYM могут оказаться непечатаемые символы.
+        if self._is_mostly_printable(data):
+            self.source_var.set("text")
+        else:
+            self.source_var.set("hex")
 
     def _bytes_from_representation(self, rep: str) -> bytes:
         raw = self._get_box(rep)
@@ -77,7 +84,16 @@ class ByteField(ttk.LabelFrame):
         raise ValueError("Неизвестный тип представления.")
 
     def get_bytes(self) -> bytes:
-        return self._bytes_from_representation(self.source_var.get())
+        rep = self.source_var.get()
+        if rep == "text":
+            raw = self._get_box("text")
+            if raw == "":
+                for alt in ("hex", "bin"):
+                    if self._get_box(alt).strip():
+                        data = self._bytes_from_representation(alt)
+                        self.source_var.set(alt)
+                        return data
+        return self._bytes_from_representation(rep)
 
     def sync_from(self, rep: str) -> None:
         try:
@@ -105,3 +121,45 @@ class ByteField(ttk.LabelFrame):
         except Exception as exc:
             messagebox.showerror("Ошибка записи", str(exc))
 
+    @staticmethod
+    def _is_mostly_printable(data: bytes) -> bool:
+        if not data:
+            return True
+        printable = 0
+        for b in data:
+            if b in (9, 10, 13) or 32 <= b <= 126:
+                printable += 1
+        return printable / len(data) >= 0.9
+
+    @staticmethod
+    def _attach_edit_shortcuts(box: ScrolledText) -> None:
+        menu = tk.Menu(box, tearoff=0)
+        menu.add_command(label="Копировать", command=lambda: box.event_generate("<<Copy>>"))
+        menu.add_command(label="Вырезать", command=lambda: box.event_generate("<<Cut>>"))
+        menu.add_command(label="Вставить", command=lambda: box.event_generate("<<Paste>>"))
+        menu.add_separator()
+        menu.add_command(label="Выделить всё", command=lambda: ByteField._select_all(box))
+
+        def popup(event: tk.Event) -> str:
+            menu.tk_popup(event.x_root, event.y_root)
+            return "break"
+
+        box.bind("<Button-3>", popup)
+        box.bind("<Control-c>", lambda e: box.event_generate("<<Copy>>") or "break")
+        box.bind("<Control-C>", lambda e: box.event_generate("<<Copy>>") or "break")
+        box.bind("<Control-Insert>", lambda e: box.event_generate("<<Copy>>") or "break")
+        box.bind("<Control-v>", lambda e: box.event_generate("<<Paste>>") or "break")
+        box.bind("<Control-V>", lambda e: box.event_generate("<<Paste>>") or "break")
+        box.bind("<Shift-Insert>", lambda e: box.event_generate("<<Paste>>") or "break")
+        box.bind("<Control-x>", lambda e: box.event_generate("<<Cut>>") or "break")
+        box.bind("<Control-X>", lambda e: box.event_generate("<<Cut>>") or "break")
+        box.bind("<Shift-Delete>", lambda e: box.event_generate("<<Cut>>") or "break")
+        box.bind("<Control-a>", lambda e: ByteField._select_all(box))
+        box.bind("<Control-A>", lambda e: ByteField._select_all(box))
+
+    @staticmethod
+    def _select_all(box: ScrolledText) -> str:
+        box.tag_add(tk.SEL, "1.0", tk.END)
+        box.mark_set(tk.INSERT, "1.0")
+        box.see(tk.INSERT)
+        return "break"

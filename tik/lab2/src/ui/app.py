@@ -279,6 +279,12 @@ class ResearchTab(ttk.Frame):
 class Lab2App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
+        style = ttk.Style(self)
+        for theme_name in ("vista", "xpnative", "clam", "alt", "default"):
+            if theme_name in style.theme_names():
+                style.theme_use(theme_name)
+                break
+
         self.title("ЛР2: гаммирование и скремблеры")
         self.geometry("1400x900")
 
