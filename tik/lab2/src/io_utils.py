@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 def read_bytes(path: str | Path) -> bytes:
+    # Файловый ввод-вывод вынесен отдельно, чтобы не смешивать его с core и UI
     return Path(path).read_bytes()
 
 

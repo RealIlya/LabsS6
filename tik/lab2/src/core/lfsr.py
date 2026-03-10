@@ -5,6 +5,7 @@ import re
 
 
 def parse_polynomial(polynomial: str) -> tuple[int, list[int]]:
+    # Старшая степень задаёт разрядность, остальные степени становятся taps
     raw = polynomial.replace(" ", "")
     if not raw:
         raise ValueError("Полином не задан.")
@@ -42,7 +43,17 @@ def seed_bytes_len_for_polynomial(polynomial: str) -> int:
     return math.ceil(degree / 8)
 
 
+def seed_has_truncated_high_bits(seed_bytes: bytes, polynomial: str) -> tuple[bool, int]:
+    # Старшие биты вне разрядности регистра будут отброшены
+    degree, _ = parse_polynomial(polynomial)
+    if not seed_bytes:
+        return False, degree
+    seed_value = int.from_bytes(seed_bytes, byteorder="big")
+    return seed_value.bit_length() > degree, degree
+
+
 def seed_int_from_bytes(seed_bytes: bytes, polynomial: str) -> int:
+    # В seed остаются только младшие биты, которые помещаются в регистр
     degree, _ = parse_polynomial(polynomial)
     if not seed_bytes:
         raise ValueError("Пустое начальное состояние скремблера.")
@@ -92,6 +103,7 @@ class LFSR:
         self.state = self.initial_state
 
     def step(self) -> int:
+        # Сначала выдаём младший бит, затем сдвигаем регистр и подаём feedback
         out_bit = self.state & 1
         feedback = 0
         for tap in self.taps:
@@ -112,6 +124,7 @@ class LFSR:
         return bytes(data)
 
     def period(self, max_steps: int | None = None) -> int:
+        # Период равен длине цикла до повторения состояния регистра
         probe = self.clone()
         seen: dict[int, int] = {}
         steps = 0
@@ -129,4 +142,3 @@ def scrambler_xor(data: bytes, polynomial: str, seed: int) -> bytes:
     lfsr = LFSR(polynomial, seed)
     gamma = lfsr.generate_bytes(len(data))
     return bytes(a ^ b for a, b in zip(data, gamma))
-

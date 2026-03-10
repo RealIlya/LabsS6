@@ -4,16 +4,30 @@ import secrets
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from core.analysis import analyze_lfsr
+from core.analysis import analyze_lfsr, build_verdict
 from core.crypto import otp_apply, otp_encrypt
-from core.lfsr import parse_polynomial, scrambler_xor, seed_bytes_from_int, seed_int_from_bytes
-from core.variants import VARIANT_SCRAMBLERS
+from core.lfsr import (
+    parse_polynomial,
+    scrambler_xor,
+    seed_bytes_from_int,
+    seed_has_truncated_high_bits,
+    seed_int_from_bytes,
+)
 from io_utils import write_bytes
 from ui.widgets import ByteField
 
 
-VARIANT_ID = 2
-SCRAMBLERS = VARIANT_SCRAMBLERS[VARIANT_ID]
+SCRAMBLERS = ("x9 + x3 + 1", "x9 + x4 + 1")
+
+
+def _warn_if_seed_truncated(seed_bytes: bytes, polynomial: str) -> None:
+    # Предупреждаем, если введённый seed длиннее разрядности текущего регистра
+    truncated, degree = seed_has_truncated_high_bits(seed_bytes, polynomial)
+    if truncated:
+        messagebox.showwarning(
+            "Предупреждение о seed",
+            f"Для текущего полинома будут использованы только младшие {degree} бит seed.",
+        )
 
 
 class CipherTab(ttk.Frame):
@@ -24,12 +38,39 @@ class CipherTab(ttk.Frame):
         self.scrambler_idx_var = tk.StringVar(value="1")
         self.polynomial_var = tk.StringVar()
         self.status_var = tk.StringVar(value="Готово.")
+        self._content: ttk.Frame | None = None
         self._build()
         self._set_polynomial_by_scrambler()
         self._toggle_scrambler_controls()
 
     def _build(self) -> None:
-        opts = ttk.LabelFrame(self, text="Параметры", padding=8)
+        # Вкладки шифрования и дешифрования собраны на одном классе, различается только режим
+        canvas = tk.Canvas(self, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        content = ttk.Frame(canvas)
+        self._content = content
+
+        content.bind(
+            "<Configure>",
+            lambda _event: canvas.configure(scrollregion=canvas.bbox("all")),
+        )
+        canvas.bind(
+            "<Configure>",
+            lambda event: canvas.itemconfigure(content_window, width=event.width),
+        )
+
+        content_window = canvas.create_window((0, 0), window=content, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+
+        for widget in (canvas, content):
+            widget.bind("<MouseWheel>", self._on_mousewheel)
+            widget.bind("<Button-4>", self._on_mousewheel)
+            widget.bind("<Button-5>", self._on_mousewheel)
+
+        opts = ttk.LabelFrame(content, text="Параметры", padding=8)
         opts.grid(row=0, column=0, sticky="ew")
         opts.grid_columnconfigure(6, weight=1)
 
@@ -49,10 +90,7 @@ class CipherTab(ttk.Frame):
             command=self._toggle_scrambler_controls,
         ).grid(row=0, column=2, sticky="w", padx=(0, 10))
 
-        ttk.Label(opts, text="Вариант:").grid(row=1, column=0, sticky="w", pady=(6, 0))
-        ttk.Label(opts, text=str(VARIANT_ID)).grid(row=1, column=1, sticky="w", pady=(6, 0))
-
-        ttk.Label(opts, text="Скремблер:").grid(row=1, column=2, sticky="w", pady=(6, 0))
+        ttk.Label(opts, text="Скремблер:").grid(row=1, column=0, sticky="w", pady=(6, 0))
         self.scrambler_combo = ttk.Combobox(
             opts,
             width=4,
@@ -60,24 +98,25 @@ class CipherTab(ttk.Frame):
             values=["1", "2"],
             textvariable=self.scrambler_idx_var,
         )
-        self.scrambler_combo.grid(row=1, column=3, sticky="w", pady=(6, 0), padx=(0, 8))
+        self.scrambler_combo.grid(row=1, column=1, sticky="w", pady=(6, 0), padx=(0, 8))
         self.scrambler_combo.bind("<<ComboboxSelected>>", lambda _: self._set_polynomial_by_scrambler())
 
-        ttk.Label(opts, text="Полином:").grid(row=1, column=4, sticky="w", pady=(6, 0))
-        ttk.Label(opts, textvariable=self.polynomial_var).grid(row=1, column=5, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Label(opts, text="Полином:").grid(row=1, column=2, sticky="w", pady=(6, 0))
+        self.poly_entry = ttk.Entry(opts, textvariable=self.polynomial_var, width=35)
+        self.poly_entry.grid(row=1, column=3, columnspan=4, sticky="ew", pady=(6, 0))
 
         in_title = "Открытый текст" if self.mode == "encrypt" else "Шифртекст"
         out_title = "Шифртекст" if self.mode == "encrypt" else "Расшифрованный текст"
         key_title = "Ключ / начальное состояние"
 
-        self.input_field = ByteField(self, in_title)
+        self.input_field = ByteField(content, in_title)
         self.input_field.grid(row=1, column=0, sticky="nsew", pady=(10, 6))
-        self.key_field = ByteField(self, key_title)
+        self.key_field = ByteField(content, key_title)
         self.key_field.grid(row=2, column=0, sticky="nsew", pady=6)
-        self.output_field = ByteField(self, out_title)
+        self.output_field = ByteField(content, out_title)
         self.output_field.grid(row=3, column=0, sticky="nsew", pady=(6, 8))
 
-        actions = ttk.Frame(self)
+        actions = ttk.Frame(content)
         actions.grid(row=4, column=0, sticky="ew")
         ttk.Button(actions, text="Сгенерировать ключ/seed", command=self._generate_material).grid(
             row=0, column=0, sticky="w"
@@ -96,12 +135,29 @@ class CipherTab(ttk.Frame):
         actions.grid_columnconfigure(3, weight=1)
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        content.grid_columnconfigure(0, weight=1)
+        content.grid_rowconfigure(3, weight=1)
+
+    def _on_mousewheel(self, event: tk.Event) -> str:
+        canvas = self.winfo_children()[0]
+        if not isinstance(canvas, tk.Canvas):
+            return "break"
+        if getattr(event, "delta", 0):
+            canvas.yview_scroll(int(-event.delta / 120), "units")
+        elif getattr(event, "num", None) == 4:
+            canvas.yview_scroll(-1, "units")
+        elif getattr(event, "num", None) == 5:
+            canvas.yview_scroll(1, "units")
+        return "break"
 
     def _toggle_scrambler_controls(self) -> None:
+        # Полином и выбор скремблера активны только в режиме LFSR
         enabled = self.method_var.get() == "scrambler"
         state = "readonly" if enabled else "disabled"
+        entry_state = "normal" if enabled else "disabled"
         self.scrambler_combo.configure(state=state)
+        self.poly_entry.configure(state=entry_state)
 
     def _set_polynomial_by_scrambler(self) -> None:
         idx = int(self.scrambler_idx_var.get()) - 1
@@ -124,6 +180,7 @@ class CipherTab(ttk.Frame):
             messagebox.showerror("Ошибка генерации", str(exc))
 
     def _execute_crypto(self) -> tuple[bytes, bytes | None]:
+        # Вся крипто логика остаётся в core, UI только собирает вход и показывает результат
         data = self.input_field.get_bytes()
         if self.method_var.get() == "otp":
             key = self.key_field.get_bytes()
@@ -142,6 +199,7 @@ class CipherTab(ttk.Frame):
             key_bytes = self.key_field.get_bytes()
             if not key_bytes:
                 raise ValueError("Укажите начальное состояние скремблера (seed).")
+            _warn_if_seed_truncated(key_bytes, polynomial)
             seed = seed_int_from_bytes(key_bytes, polynomial)
             out = scrambler_xor(data, polynomial, seed)
             key_to_save = None
@@ -182,72 +240,68 @@ class ResearchTab(ttk.Frame):
         super().__init__(master, padding=10)
         self.scrambler_idx_var = tk.StringVar(value="1")
         self.polynomial_var = tk.StringVar()
-        self.seed_var = tk.StringVar(value="1")
-        self.bits_var = tk.StringVar(value="2048")
         self._build()
         self._set_polynomial_by_scrambler()
+        self.seed_field.set_bytes(seed_bytes_from_int(1, self.polynomial_var.get()))
 
     def _build(self) -> None:
         top = ttk.LabelFrame(self, text="Параметры исследования", padding=8)
         top.grid(row=0, column=0, sticky="ew")
-        top.grid_columnconfigure(6, weight=1)
+        top.grid_columnconfigure(4, weight=1)
 
-        ttk.Label(top, text="Вариант:").grid(row=0, column=0, sticky="w")
-        ttk.Label(top, text=str(VARIANT_ID)).grid(row=0, column=1, sticky="w", padx=(0, 8))
-
-        ttk.Label(top, text="Скремблер:").grid(row=0, column=2, sticky="w")
+        ttk.Label(top, text="Скремблер:").grid(row=0, column=0, sticky="w")
         scr_combo = ttk.Combobox(top, width=4, state="readonly", values=["1", "2"], textvariable=self.scrambler_idx_var)
-        scr_combo.grid(row=0, column=3, sticky="w", padx=(0, 8))
+        scr_combo.grid(row=0, column=1, sticky="w", padx=(0, 8))
         scr_combo.bind("<<ComboboxSelected>>", lambda _: self._set_polynomial_by_scrambler())
 
-        ttk.Label(top, text="Полином:").grid(row=0, column=4, sticky="w")
-        ttk.Label(top, textvariable=self.polynomial_var).grid(row=0, column=5, sticky="w", padx=(4, 8))
+        ttk.Label(top, text="Полином:").grid(row=0, column=2, sticky="w")
+        ttk.Entry(top, textvariable=self.polynomial_var, width=33).grid(row=0, column=3, sticky="ew", padx=(4, 8))
 
-        ttk.Label(top, text="Seed (int/bin/0x):").grid(row=1, column=0, sticky="w", pady=(8, 0))
-        ttk.Entry(top, textvariable=self.seed_var, width=20).grid(row=1, column=1, sticky="w", pady=(8, 0))
-        ttk.Label(top, text="Бит для анализа:").grid(row=1, column=2, sticky="w", pady=(8, 0))
-        ttk.Entry(top, textvariable=self.bits_var, width=10).grid(row=1, column=3, sticky="w", pady=(8, 0))
         ttk.Button(top, text="Анализ выбранного", command=self._analyze_selected).grid(
-            row=1, column=5, sticky="w", pady=(8, 0)
+            row=1, column=0, sticky="w", pady=(8, 0)
         )
-        ttk.Button(top, text="Анализ обоих", command=self._analyze_both).grid(row=1, column=6, sticky="w", pady=(8, 0))
+        ttk.Button(top, text="Анализ обоих", command=self._analyze_both).grid(row=1, column=1, sticky="w", pady=(8, 0))
 
-        self.output = tk.Text(self, width=120, height=25, wrap="word")
-        self.output.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+        self.seed_field = ByteField(self, "Начальное состояние", height=3)
+        self.seed_field.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+
+        self.output = tk.Text(self, width=120, height=20, wrap="word")
+        self.output.grid(row=2, column=0, sticky="nsew", pady=(8, 0))
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
 
     def _set_polynomial_by_scrambler(self) -> None:
         idx = int(self.scrambler_idx_var.get()) - 1
         self.polynomial_var.set(SCRAMBLERS[idx])
 
     def _parse_seed(self) -> int:
-        raw = self.seed_var.get().strip().lower()
-        if not raw:
-            raise ValueError("Укажите seed.")
-        if raw.startswith("0x"):
-            seed = int(raw, 16)
-        elif set(raw) <= {"0", "1"} and len(raw) > 1:
-            seed = int(raw, 2)
-        else:
-            seed = int(raw, 10)
-        if seed <= 0:
-            raise ValueError("Seed должен быть > 0.")
-        return seed
+        # Исследование ПСП использует тот же байтовый seed, что и режим скремблера
+        polynomial = self.polynomial_var.get().strip()
+        if not polynomial:
+            raise ValueError("Полином скремблера не задан.")
+        seed_bytes = self.seed_field.get_bytes()
+        _warn_if_seed_truncated(seed_bytes, polynomial)
+        return seed_int_from_bytes(seed_bytes, polynomial)
 
-    def _format_stats(self, title: str, polynomial: str, seed: int, bits: int) -> str:
-        stats = analyze_lfsr(polynomial, seed, sample_bits=bits)
+    def _format_stats(self, title: str, polynomial: str, seed: int) -> str:
+        # Показываем и агрегированные метрики, и первые биты ПСП, чтобы видеть сдвиг фазы
+        stats = analyze_lfsr(polynomial, seed)
         return (
             f"{title}\n"
             f"Полином: {polynomial}\n"
-            f"Seed: {seed}\n"
+            f"Seed до маскирования: {seed}\n"
+            f"Фактический seed: {stats.effective_seed}\n"
+            f"Разрядность LFSR: {stats.degree}\n"
+            f"Проанализировано бит: {stats.analyzed_bits} (один период)\n"
+            f"Первые биты ПСП: {stats.preview_bits}\n"
             f"Период: {stats.period}\n"
             f"Нули/единицы: {stats.zeros}/{stats.ones}\n"
             f"Критерий chi^2: {stats.chi_square:.4f}\n"
             f"|ones-zeros|: {stats.balanced_delta}\n"
             f"Циклические сдвиги уникальны: {'да' if stats.cyclic_shifts_unique else 'нет'}\n"
             f"Макс. |автокорреляция|: {stats.max_abs_autocorrelation:.4f}\n"
+            f"{build_verdict(stats)}\n"
             "----------------------------------------\n"
         )
 
@@ -255,8 +309,7 @@ class ResearchTab(ttk.Frame):
         try:
             polynomial = self.polynomial_var.get().strip()
             seed = self._parse_seed()
-            bits = int(self.bits_var.get())
-            text = self._format_stats("Исследование выбранного скремблера", polynomial, seed, bits)
+            text = self._format_stats("Исследование выбранного скремблера", polynomial, seed)
             self.output.delete("1.0", tk.END)
             self.output.insert("1.0", text)
         except Exception as exc:
@@ -265,11 +318,10 @@ class ResearchTab(ttk.Frame):
     def _analyze_both(self) -> None:
         try:
             seed = self._parse_seed()
-            bits = int(self.bits_var.get())
             text = ""
             for idx, polynomial in enumerate(SCRAMBLERS, start=1):
                 title = f"Скремблер {idx}"
-                text += self._format_stats(title, polynomial, seed, bits)
+                text += self._format_stats(title, polynomial, seed)
             self.output.delete("1.0", tk.END)
             self.output.insert("1.0", text)
         except Exception as exc:

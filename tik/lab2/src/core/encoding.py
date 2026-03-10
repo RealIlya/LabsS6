@@ -2,7 +2,10 @@ from __future__ import annotations
 
 
 def bytes_to_text(data: bytes) -> str:
-    """Lossless one-byte to one-char mapping for reversible symbolic view."""
+    """
+    Преобразование одного байта в один символ без потерь 
+    для обратимого символьного представления.
+    """
     return data.decode("latin-1")
 
 

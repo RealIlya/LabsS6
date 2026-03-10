@@ -24,7 +24,6 @@ def test_scrambler_xor_reversible() -> None:
 
 
 def test_analysis_returns_period() -> None:
-    stats = analyze_lfsr("x9 + x3 + 1", seed=0b100111001, sample_bits=256)
+    stats = analyze_lfsr("x9 + x3 + 1", seed=0b100111001)
     assert stats.period > 0
     assert stats.chi_square >= 0
-
