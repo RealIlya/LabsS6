@@ -1,0 +1,40 @@
+classDiagram
+    class MainForm
+    class UiErrorMapper {
+      <<static>>
+      +ToUserMessage(ex) string
+    }
+    class PhoneBookControl {
+      +RecordsInBook() int
+      +AddRecord(name, number)
+      +DeleteRecord(name, number) bool
+      +ClearBook()
+      +FindRecord(name, number) int
+      +CreateFile(path)
+      +SaveBookToFile()
+      +LoadBookFromFile()
+    }
+    class AbonentList {
+      +RecordsCount int
+      +AddRecord(abonent)
+      +FindRecord(abonent) int
+      +RemoveRecord(abonent) bool
+      +ClearList()
+    }
+    class Abonent {
+      +Name string
+      +Number string
+      +Write(newRecord)
+      +Less(other) int
+    }
+    class AbonentRecord {
+      +Name string
+      +Number string
+    }
+
+    MainForm --> PhoneBookControl : uses
+    MainForm ..> UiErrorMapper : maps errors
+    PhoneBookControl *-- AbonentList : composition
+    AbonentList o-- Abonent : contains
+    Abonent --> AbonentRecord : stores
+    PhoneBookControl ..> AbonentRecord : depends
