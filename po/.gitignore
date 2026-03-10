@@ -14,4 +14,4 @@
 *.suo
 
 # ===== Generated lab artifacts =====
-/lab1/_extracted_lab1/
+/lab*/_extracted_*/
