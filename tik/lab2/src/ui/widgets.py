@@ -22,6 +22,7 @@ class ByteField(ttk.LabelFrame):
         self._build(height)
 
     def _build(self, height: int) -> None:
+        # Один виджет обслуживает все три представления одних и тех же байтов
         src = ttk.Frame(self)
         src.grid(row=0, column=0, columnspan=3, sticky="w")
         ttk.Label(src, text="Источник ввода:").grid(row=0, column=0, padx=(0, 8))
@@ -63,6 +64,7 @@ class ByteField(ttk.LabelFrame):
         return self.boxes[rep].get("1.0", "end-1c")
 
     def set_bytes(self, data: bytes) -> None:
+        # После установки байтов сразу синхронизируем SYM, HEX и BIN
         self._set_box("text", bytes_to_text(data))
         self._set_box("hex", bytes_to_hex(data))
         self._set_box("bin", bytes_to_bin(data))
@@ -84,6 +86,7 @@ class ByteField(ttk.LabelFrame):
         raise ValueError("Неизвестный тип представления.")
 
     def get_bytes(self) -> bytes:
+        # Если SYM пустой, но HEX или BIN заполнены, берём данные оттуда
         rep = self.source_var.get()
         if rep == "text":
             raw = self._get_box("text")
@@ -96,6 +99,7 @@ class ByteField(ttk.LabelFrame):
         return self._bytes_from_representation(rep)
 
     def sync_from(self, rep: str) -> None:
+        # Выбранное представление считаем источником истины и пересчитываем остальные
         try:
             data = self._bytes_from_representation(rep)
             self.set_bytes(data)
@@ -133,6 +137,7 @@ class ByteField(ttk.LabelFrame):
 
     @staticmethod
     def _attach_edit_shortcuts(box: ScrolledText) -> None:
+        # Горячие клавиши и контекстное меню нужны для работы с большими двоичными и hex-полями
         menu = tk.Menu(box, tearoff=0)
         menu.add_command(label="Копировать", command=lambda: box.event_generate("<<Copy>>"))
         menu.add_command(label="Вырезать", command=lambda: box.event_generate("<<Cut>>"))
