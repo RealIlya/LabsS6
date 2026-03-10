@@ -1,7 +1,3 @@
-_tmp*
-
-out
-
 __pycache__
 
 # ===== OS / File manager =====
@@ -20,9 +16,21 @@ Desktop.ini
 *.log
 *.tmp
 *.temp
+_tmp*
+
 
 # ===== Generic build folders =====
 build/
 cmake-build-*/
 CMakeCache.txt
 CMakeFiles/
+
+# ===== Temp folders =====
+
+# out*
+_tmp*
+
+# ===== Executable =====
+
+*.exe
+*.out
