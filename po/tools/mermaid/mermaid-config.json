@@ -1,0 +1,16 @@
+{
+  "theme": "default",
+  "look": "classic",
+  "fontFamily": "Times New Roman",
+  "themeVariables": {
+    "fontFamily": "Times New Roman",
+    "primaryColor": "#ffffff",
+    "primaryTextColor": "#000000",
+    "primaryBorderColor": "#333333",
+    "lineColor": "#333333",
+    "secondaryColor": "#f4f4f4",
+    "tertiaryColor": "#ffffff",
+    "clusterBkg": "#ffffff",
+    "clusterBorder": "#333333"
+  }
+}
