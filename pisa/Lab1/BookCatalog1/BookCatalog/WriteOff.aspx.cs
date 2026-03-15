@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Web.UI.WebControls;
 
@@ -41,13 +41,15 @@ public partial class WriteOff : System.Web.UI.Page
 
     private void LoadArchive()
     {
-        List<Book> archived = DataStore.GetArchivedBooks();
+        // [FIX 1] Источник архива — записи WriteOffRecord, а не книги со
+        // статусом WrittenOff. Только так в архив попадают частичные списания.
+        List<WriteOffRecord> records = DataStore.GetWriteOffRecords();
 
-        gvArchive.DataSource = archived.Count > 0 ? archived : null;
+        gvArchive.DataSource = records.Count > 0 ? records : null;
         gvArchive.DataBind();
 
-        lblArchiveCount.Text = archived.Count > 0
-            ? $"[OK] В АРХИВЕ: {archived.Count} ЗАПИСЕЙ"
+        lblArchiveCount.Text = records.Count > 0
+            ? $"[OK] В АРХИВЕ: {records.Count} ЗАПИСЕЙ"
             : "[OK] АРХИВ ПУСТ";
     }
 
@@ -91,11 +93,25 @@ public partial class WriteOff : System.Web.UI.Page
             return;
         }
 
-        if (count > available)
+        // [FIX 2] Было: count > available (т.е. > AvailableCount).
+        // Это блокировало любой ввод, превышающий число свободных экземпляров,
+        // и путь WriteOffResult.HasActiveBookings становился недостижим.
+        // Теперь верхняя граница — TotalCount книги: нельзя списать больше,
+        // чем физически существует экземпляров (свободных + забронированных).
+        // Если count > AvailableCount, DataStore сам вернёт HasActiveBookings
+        // и покажет панель подтверждения отмены броней.
+        var bookToCheck = DataStore.GetBookById(bookId);
+        if (bookToCheck == null)
+        {
+            ShowMessage("[!] Книга не найдена в каталоге", false);
+            return;
+        }
+
+        if (count > bookToCheck.TotalCount)
         {
             lblAvailableHint.Text = available.ToString();
             ShowMessage(
-                $"[!] Нельзя списать {count} шт. — доступно только {available} шт.",
+                $"[!] Нельзя списать {count} шт. — всего экземпляров: {bookToCheck.TotalCount}",
                 false);
             return;
         }
@@ -206,13 +222,19 @@ public partial class WriteOff : System.Web.UI.Page
     protected void lbRestore_Click(object sender, EventArgs e)
     {
         var lb = (LinkButton)sender;
-        if (!int.TryParse(lb.CommandArgument, out int bookId) || bookId <= 0)
+
+        // [FIX 1] CommandArgument теперь должен передавать RecordID (а не BookID).
+        // Обновите привязку в WriteOff.aspx: CommandArgument='<%# Eval("RecordID") %>'
+        if (!int.TryParse(lb.CommandArgument, out int recordId) || recordId <= 0)
         {
-            ShowMessage("[!] Некорректный идентификатор книги", false);
+            ShowMessage("[!] Некорректный идентификатор записи", false);
             return;
         }
 
-        bool restored = DataStore.RestoreBook(bookId);
+        // [FIX 1] Было: DataStore.RestoreBook(bookId) — восстанавливало только
+        // полностью списанные книги и не умело работать с частичными записями.
+        // Теперь: RestoreFromRecord(recordId) восстанавливает конкретную партию.
+        bool restored = DataStore.RestoreFromRecord(recordId);
 
         if (restored)
         {
@@ -252,5 +274,3 @@ public partial class WriteOff : System.Web.UI.Page
         lblMessage.Visible = true;
     }
 }
-
-
