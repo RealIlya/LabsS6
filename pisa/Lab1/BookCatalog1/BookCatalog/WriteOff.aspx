@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeFile="WriteOff.aspx.cs" Inherits="WriteOff" %>
+<%@ Page Language="C#" AutoEventWireup="true" CodeFile="WriteOff.aspx.cs" Inherits="WriteOff" %>
 <!DOCTYPE html>
 <html>
 <head runat="server">
@@ -160,7 +160,6 @@
                 </asp:TemplateField>
                 <asp:TemplateField HeaderText="Действие" ItemStyle-Width="100px">
                     <ItemTemplate>
-                        <%-- При клике показываем доступное количество в подсказке --%>
                         <asp:LinkButton runat="server"
                             CommandArgument='<%# Eval("BookID") + ";" + Eval("AvailableCount") %>'
                             Text="[СПИСАТЬ]"
@@ -216,40 +215,55 @@
                 CssClass="results-count mono"
                 Style="display:block; margin-bottom:8px;" />
 
+            <%-- Источник данных — WriteOffRecord, а не Book.
+                 Поля: BookTitle, BookAuthor, BookISBN, Count, Reason,
+                       WriteOffDate, RecordID, CanBeRestored --%>
             <asp:GridView ID="gvArchive" runat="server"
                 AutoGenerateColumns="false"
                 CssClass="books-grid"
                 EmptyDataText="Архив пуст">
                 <Columns>
-                    <asp:BoundField DataField="Title"  HeaderText="Название" />
-                    <asp:BoundField DataField="Author" HeaderText="Автор" />
-                    <asp:BoundField DataField="Year"   HeaderText="Год"
-                        ItemStyle-Width="50px" />
+                    <%-- BookTitle вместо Title --%>
+                    <asp:BoundField DataField="BookTitle"  HeaderText="Название" />
+                    <%-- BookAuthor вместо Author --%>
+                    <asp:BoundField DataField="BookAuthor" HeaderText="Автор" />
+                    <%-- BookISBN вместо Year (года в записи нет) --%>
+                    <asp:BoundField DataField="BookISBN"   HeaderText="ISBN"
+                        ItemStyle-Width="130px" />
+                    <%-- Count — сколько экземпляров было списано в этой записи --%>
+                    <asp:TemplateField HeaderText="Кол-во" ItemStyle-Width="60px">
+                        <ItemTemplate>
+                            <asp:Label runat="server"
+                                Text='<%# Eval("Count") %>'
+                                CssClass="mono"
+                                style="color:var(--nier-gold);" />
+                        </ItemTemplate>
+                    </asp:TemplateField>
+                    <%-- Reason вместо WriteOffReason --%>
                     <asp:TemplateField HeaderText="Причина" ItemStyle-Width="130px">
                         <ItemTemplate>
                             <asp:Label runat="server"
-                                Text='<%# Server.HtmlEncode(
-                                    Eval("WriteOffReason").ToString()) %>'
+                                Text='<%# Server.HtmlEncode(Eval("Reason").ToString()) %>'
                                 CssClass="mono"
                                 style="font-size:.8rem; color:var(--nier-pale);" />
                         </ItemTemplate>
                     </asp:TemplateField>
+                    <%-- WriteOffDate — тип DateTime, не nullable, проверка не нужна --%>
                     <asp:TemplateField HeaderText="Дата списания" ItemStyle-Width="130px">
                         <ItemTemplate>
                             <asp:Label runat="server"
-                                Text='<%# Eval("WriteOffDate") != null
-                                    ? ((DateTime)Eval("WriteOffDate"))
-                                        .ToString("dd.MM.yyyy HH:mm")
-                                    : "—" %>'
+                                Text='<%# ((DateTime)Eval("WriteOffDate"))
+                                    .ToString("dd.MM.yyyy HH:mm") %>'
                                 CssClass="mono"
                                 style="font-size:.8rem; color:var(--nier-pale);" />
                         </ItemTemplate>
                     </asp:TemplateField>
+                    <%-- CommandArgument — RecordID вместо BookID --%>
                     <asp:TemplateField HeaderText="Восстановить" ItemStyle-Width="130px">
                         <ItemTemplate>
                             <asp:LinkButton runat="server"
                                 CommandName="Restore"
-                                CommandArgument='<%# Eval("BookID") %>'
+                                CommandArgument='<%# Eval("RecordID") %>'
                                 Text="[ВОССТАНОВИТЬ]"
                                 CssClass='<%# (bool)Eval("CanBeRestored")
                                     ? "action-link book-btn" : "action-link" %>'
@@ -267,5 +281,3 @@
 </form>
 </body>
 </html>
-
-
