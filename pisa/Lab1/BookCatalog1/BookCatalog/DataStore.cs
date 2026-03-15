@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -7,10 +7,14 @@ public static class DataStore
     private static List<Book> _books = new List<Book>();
     private static List<User> _users = new List<User>();
     private static List<BookReservation> _bookings = new List<BookReservation>();
+    // [FIX 1] Список записей о списании — отсутствовал в оригинале
+    private static List<WriteOffRecord> _writeOffRecords = new List<WriteOffRecord>();
 
     private static int _nextBookId = 1;
     private static int _nextUserId = 1;
     private static int _nextBookingId = 1;
+    // [FIX 1] Счётчик ID для записей списания
+    private static int _nextRecordId = 1;
 
     static DataStore()
     {
@@ -149,8 +153,6 @@ public static class DataStore
         return true;
     }
 
-    // Сценарий 5: списание с учётом броней и частичного списания
-    // Возвращает также фактически списанное количество через out-параметр
     public static WriteOffResult WriteOffBook(
         int bookId, string reason, int count, out int writtenOff)
     {
@@ -160,48 +162,56 @@ public static class DataStore
 
         if (count <= 0) count = book.AvailableCount;
 
-        // Сколько экземпляров не забронировано прямо сейчас
         int activeBookings = _bookings.Count(b =>
             b.BookID == bookId && b.Status == "Active");
-        int freeCount = book.AvailableCount; // AvailableCount уже не включает забронированные
+        int freeCount = book.AvailableCount;
 
-        // Если свободных экземпляров достаточно — брони не трогаем
         if (count <= freeCount)
         {
             writtenOff = count;
             book.AvailableCount -= count;
             book.TotalCount -= count;
 
+            // [FIX 1] Создаём запись WriteOffRecord при ЛЮБОМ списании,
+            // а не только при полном. Именно отсюда архив и должен заполняться.
+            _writeOffRecords.Add(new WriteOffRecord
+            {
+                RecordID = _nextRecordId++,
+                BookID = book.BookID,
+                BookTitle = book.Title,
+                BookAuthor = book.Author,
+                BookISBN = book.ISBN,
+                Count = count,
+                Reason = reason,
+                WriteOffDate = DateTime.Now
+            });
+
             if (book.AvailableCount == 0 && activeBookings == 0)
             {
-                // Все свободные списаны и броней нет — уходит в архив
                 book.Status = "WrittenOff";
                 book.WriteOffReason = reason;
                 book.WriteOffDate = DateTime.Now;
-                // Сохраняем оригинальное суммарное количество для восстановления
                 book.WriteOffOriginalTotal = book.TotalCount + count;
                 return WriteOffResult.Success;
             }
             else if (book.AvailableCount == 0 && activeBookings > 0)
             {
-                // Свободных не осталось, но есть брони — статус Booked, в архив не идёт
                 book.Status = "Booked";
                 return WriteOffResult.PartialSuccess;
             }
             else
             {
-                // Ещё есть свободные — просто уменьшаем счётчик
                 return WriteOffResult.PartialSuccess;
             }
         }
         else
         {
-            // Свободных не хватает — нужно затронуть забронированные
+            // [FIX 2] Этот путь теперь достижим, потому что WriteOff.aspx.cs
+            // больше не блокирует count > AvailableCount на уровне UI.
             return WriteOffResult.HasActiveBookings;
         }
     }
 
-    // Перегрузка без out для обратной совместимости
     public static WriteOffResult WriteOffBook(int bookId, string reason, int count = 0)
     {
         return WriteOffBook(bookId, reason, count, out _);
@@ -233,13 +243,49 @@ public static class DataStore
         return affectedUserIds;
     }
 
-    // Сценарий 5, п.14: восстановление — возвращает оригинальное количество
+    // =========================================================
+    // АРХИВ СПИСАНИЙ
+    // =========================================================
+
+    // [FIX 1] Метод для получения записей архива — отсутствовал в оригинале
+    public static List<WriteOffRecord> GetWriteOffRecords() =>
+        _writeOffRecords.OrderByDescending(r => r.WriteOffDate).ToList();
+
+    // [FIX 1] Восстановление конкретной записи из архива по RecordID.
+    // Оригинальный RestoreBook(bookId) работал только для полностью
+    // списанных книг; частичные записи он найти не мог.
+    public static bool RestoreFromRecord(int recordId)
+    {
+        var record = _writeOffRecords.FirstOrDefault(r => r.RecordID == recordId);
+        if (record == null || !record.CanBeRestored) return false;
+
+        var book = _books.FirstOrDefault(b => b.BookID == record.BookID);
+        if (book == null) return false;
+
+        book.AvailableCount += record.Count;
+        book.TotalCount += record.Count;
+
+        if (book.Status == "WrittenOff" || book.Status == "Booked")
+            book.Status = "Available";
+
+        // Сбрасываем поля книги, если она была полностью списана
+        if (book.Status == "Available")
+        {
+            book.WriteOffReason = null;
+            book.WriteOffDate = null;
+            book.WriteOffOriginalTotal = 0;
+        }
+
+        _writeOffRecords.Remove(record);
+        return true;
+    }
+
+    // Оставляем для обратной совместимости — используется в RestoreBook
     public static bool RestoreBook(int bookId)
     {
         var book = _books.FirstOrDefault(b => b.BookID == bookId);
         if (book == null || !book.CanBeRestored) return false;
 
-        // Восстанавливаем оригинальное количество если оно было сохранено
         if (book.WriteOffOriginalTotal > 0)
         {
             book.AvailableCount = book.WriteOffOriginalTotal;
@@ -247,7 +293,6 @@ public static class DataStore
         }
         else
         {
-            // Fallback: восстанавливаем TotalCount как AvailableCount
             book.AvailableCount = book.TotalCount;
         }
 
@@ -327,7 +372,6 @@ public static class DataStore
         return true;
     }
 
-    // Выдача / снятие прав администратора
     public static bool ToggleAdminRole(int userId)
     {
         var user = _users.FirstOrDefault(u => u.UserID == userId);
@@ -452,10 +496,10 @@ public enum BookingResult
 
 public enum WriteOffResult
 {
-    Success,        // все свободные списаны, книга в архив
-    PartialSuccess, // часть списана, книга остаётся в каталоге
+    Success,
+    PartialSuccess,
     NotFound,
-    HasActiveBookings // свободных не хватает — нужно затронуть забронированные
+    HasActiveBookings
 }
 
 public enum DeleteResult
@@ -465,5 +509,3 @@ public enum DeleteResult
     HasActiveBookings,
     NotWrittenOff
 }
-
-
