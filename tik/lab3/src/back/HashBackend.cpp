@@ -3,6 +3,8 @@
 #include <QDebug>
 #include <QFile>
 #include <QTextStream>
+#include <sstream>
+#include <iomanip>
 
 // Константы из методички
 const uint32_t R1[80] = {
@@ -28,12 +30,13 @@ const uint32_t S2[80] = {8,  9,  9,  11, 13, 15, 15, 5,  7,  7,  8,  11, 14, 14,
                          6,  9,  12, 9,  12, 5,  15, 8,  8,  5,  12, 9,  12, 5,
                          14, 6,  8,  13, 6,  5,  15, 13, 11, 11};
 
+
 uint32_t f(int j, uint32_t x, uint32_t y, uint32_t z) {
-  if (j <= 15) return x ^ y ^ z;
-  if (j <= 31) return (x & y) | (~x & z);
-  if (j <= 47) return (x | ~y) ^ z;
-  if (j <= 63) return (x & z) | (y & ~z);
-  return x ^ (y | ~z);
+  if (j <= 15)  return x ^ y ^ z;                  // F: XOR
+  if (j <= 31)  return (x & y) | (~x & z);         // G
+  if (j <= 47)  return (x | ~y) ^ z;               // H
+  if (j <= 63)  return (x & z) | (y & ~z);         // I
+  return x ^ (y | ~z);                             // J
 }
 
 uint32_t K1(int j) {
@@ -82,32 +85,44 @@ std::vector<uint8_t> HashBackend::padMessage(const QString& input) {
   uint64_t bitLength = data.size() * 8;
 
   std::vector<uint8_t> padded(data.begin(), data.end());
-  padded.push_back(0x80);  // Добавляем 1 бит
+  padded.push_back(0x80);
 
-  while (padded.size() % 64 != 56) padded.push_back(0x00);  // Добавляем нули
+  while (padded.size() % 64 != 56) {
+    padded.push_back(0x00);
+  }
 
-  for (int i = 0; i < 8; i++) padded.push_back((bitLength >> (i * 8)) & 0xFF);
+  for (int i = 0; i < 8; i++) {
+    padded.push_back((bitLength >> (i * 8)) & 0xFF);
+  }
+
   return padded;
+}
+
+static void bytesToWords(const uint8_t* block, uint32_t* words) {
+  for (int i = 0; i < 16; i++) {
+    words[i] = static_cast<uint32_t>(block[i * 4]) |
+               (static_cast<uint32_t>(block[i * 4 + 1]) << 8) |
+               (static_cast<uint32_t>(block[i * 4 + 2]) << 16) |
+               (static_cast<uint32_t>(block[i * 4 + 3]) << 24);
+  }
 }
 
 void HashBackend::processBlock(const uint8_t* block, uint32_t* H) {
   uint32_t X[16];
-  std::memcpy(X, block, 64);
+  bytesToWords(block, X);
 
   uint32_t A1 = H[0], B1 = H[1], C1 = H[2], D1 = H[3], E1 = H[4];
   uint32_t A2 = H[5], B2 = H[6], C2 = H[7], D2 = H[8], E2 = H[9];
 
   for (int j = 0; j < 80; ++j) {
-    uint32_t T1 =
-        std::rotl(A1 + f(j, B1, C1, D1) + X[R1[j]] + K1(j), S1[j]) + E1;
+    uint32_t T1 = std::rotl(A1 + f(j, B1, C1, D1) + X[R1[j]] + K1(j), S1[j]) + E1;
     A1 = E1;
     E1 = D1;
     D1 = std::rotl(C1, 10);
     C1 = B1;
     B1 = T1;
 
-    uint32_t T2 =
-        std::rotl(A2 + f(79 - j, B2, C2, D2) + X[R2[j]] + K2(j), S2[j]) + E2;
+    uint32_t T2 = std::rotl(A2 + f(79 - j, B2, C2, D2) + X[R2[j]] + K2(j), S2[j]) + E2;
     A2 = E2;
     E2 = D2;
     D2 = std::rotl(C2, 10);
@@ -121,41 +136,37 @@ void HashBackend::processBlock(const uint8_t* block, uint32_t* H) {
     if (j == 79) std::swap(E1, E2);
   }
 
-  uint32_t T = H[1] + C1 + D2;
-  H[1] = H[2] + D1 + E2;
-  H[2] = H[3] + E1 + A2;
-  H[3] = H[4] + A1 + B2;
-  H[4] = H[0] + B1 + C2;
-  H[0] = T;
-
-  T = H[6] + C2 + D1;
-  H[6] = H[7] + D2 + E1;
-  H[7] = H[8] + E2 + A1;
-  H[8] = H[9] + A2 + B1;
-  H[9] = H[5] + B2 + C1;
-  H[5] = T;
+  H[0] = H[0] + A1;
+  H[1] = H[1] + B1;
+  H[2] = H[2] + C1;
+  H[3] = H[3] + D1;
+  H[4] = H[4] + E1;
+  H[5] = H[5] + A2;
+  H[6] = H[6] + B2;
+  H[7] = H[7] + C2;
+  H[8] = H[8] + D2;
+  H[9] = H[9] + E2;
 }
 
 void HashBackend::processBlockWithTrace(
     const uint8_t* block, std::vector<std::vector<uint32_t>>& trace) {
   uint32_t X[16];
-  std::memcpy(X, block, 64);
+  bytesToWords(block, X);
 
-  // Инициализация по методичке RIPEMD-320
-  uint32_t A1 = 0x67452301, B1 = 0xefcdab89, C1 = 0x98badcfe, D1 = 0x10325476,
-           E1 = 0xc3d2e1f0;
-  uint32_t A2 = 0x76543210, B2 = 0xfedcba98, C2 = 0x89abcdef, D2 = 0x01234567,
-           E2 = 0x3c2d1e0f;
+  uint32_t A1 = 0x67452301, B1 = 0xefcdab89, C1 = 0x98badcfe, 
+           D1 = 0x10325476, E1 = 0xc3d2e1f0;
+  uint32_t A2 = 0x76543210, B2 = 0xfedcba98, C2 = 0x89abcdef, 
+           D2 = 0x01234567, E2 = 0x3c2d1e0f;
+
   for (int j = 0; j < 80; ++j) {
-    uint32_t T1 =
-        std::rotl(A1 = f(j, B1, C1, D1) + X[R1[j]] + K1(j), S1[j]) + E1;
+    uint32_t T1 = std::rotl(A1 + f(j, B1, C1, D1) + X[R1[j]] + K1(j), S1[j]) + E1;
     A1 = E1;
     E1 = D1;
     D1 = std::rotl(C1, 10);
     C1 = B1;
     B1 = T1;
-    uint32_t T2 =
-        std::rotl(A2 = f(79 - j, B2, C2, D2) + X[R2[j]] + K2(j), S2[j]) + E2;
+
+    uint32_t T2 = std::rotl(A2 + f(79 - j, B2, C2, D2) + X[R2[j]] + K2(j), S2[j]) + E2;
     A2 = E2;
     E2 = D2;
     D2 = std::rotl(C2, 10);
@@ -167,6 +178,7 @@ void HashBackend::processBlockWithTrace(
     if (j == 47) std::swap(A1, A2);
     if (j == 63) std::swap(C1, C2);
     if (j == 79) std::swap(E1, E2);
+
     trace.push_back({A1, B1, C1, D1, E1, A2, B2, C2, D2, E2});
   }
 }
@@ -177,12 +189,17 @@ QString HashBackend::calculateHash(const QString& input) noexcept {
   uint32_t H[10] = {0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0,
                     0x76543210, 0xfedcba98, 0x89abcdef, 0x01234567, 0x3c2d1e0f};
 
-  for (size_t i = 0; i < padded.size(); i += 64) processBlock(&padded[i], H);
+  for (size_t i = 0; i < padded.size(); i += 64) {
+    processBlock(&padded[i], H);
+  }
+
   std::stringstream ss;
   for (int i = 0; i < 10; ++i) {
     uint8_t* bytes = reinterpret_cast<uint8_t*>(&H[i]);
-    for (int b = 0; b < 4; ++b)
-      ss << std::hex << std::setfill('0') << std::setw(2) << (int)bytes[b];
+    for (int b = 0; b < 4; ++b) {
+      ss << std::hex << std::setfill('0') << std::setw(2) 
+         << static_cast<int>(bytes[b]);
+    }
   }
   return QString::fromStdString(ss.str());
 }
@@ -190,27 +207,42 @@ QString HashBackend::calculateHash(const QString& input) noexcept {
 int HashBackend::calculateHammingDistance(const std::vector<uint32_t>& state1,
                                           const std::vector<uint32_t>& state2) {
   int distance = 0;
-  for (size_t i = 0; i < 10; ++i)
+  for (size_t i = 0; i < 10; ++i) {
     distance += std::popcount(state1[i] ^ state2[i]);
+  }
   return distance;
 }
 
 QVariantList HashBackend::analyzeAvalanche(const QString& input,
                                            int bitIndexToFlip) noexcept {
-  QVariantList results;
-  std::vector<uint8_t> block1 = padMessage(input);
-  block1.resize(64);
-  auto block2 = block1;
-  if (bitIndexToFlip >= 0 && bitIndexToFlip < 512) {
-    int byteIndex = bitIndexToFlip / 8;
-    int bitInByte = 7 - (bitIndexToFlip % 8);
-    block2[byteIndex] ^= (1 << bitInByte);
-  }
-  std::vector<std::vector<uint32_t>> trace1;
-  std::vector<std::vector<uint32_t>> trace2;
-  processBlockWithTrace(&block1[0], trace1);
-  processBlockWithTrace(&block2[0], trace2);
-  for (int j = 0; j < 80; ++j)
-    results.append(calculateHammingDistance(trace1[j], trace2[j]));
-  return results;
+    QVariantList results;
+    std::vector<uint8_t> block1 = padMessage(input);
+    block1.resize(64);
+    auto block2 = block1;
+    
+    if (bitIndexToFlip >= 0 && bitIndexToFlip < 512) {
+        int byteIndex = bitIndexToFlip / 8;
+        int bitInByte = 7 - (bitIndexToFlip % 8);
+        block2[byteIndex] ^= (1 << bitInByte);
+    }
+    
+    std::vector<std::vector<uint32_t>> trace1;
+    std::vector<std::vector<uint32_t>> trace2;
+    processBlockWithTrace(&block1[0], trace1);
+    processBlockWithTrace(&block2[0], trace2);
+    
+    for (int j = 0; j < 80; ++j) {
+        results.append(calculateHammingDistance(trace1[j], trace2[j]));
+    }
+    
+    // ✅ ВСТАВИТЬ СЮДА - в конец метода
+    #ifdef DEBUG
+    qDebug() << "[HashBackend] Avalanche analysis:";
+    qDebug() << "  Input:" << input;
+    qDebug() << "  Bit flipped:" << bitIndexToFlip;
+    qDebug() << "  Final distance:" << results[79].toInt() << "bits";
+    #endif
+    // =========================
+    
+    return results;
 }
