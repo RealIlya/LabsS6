@@ -140,19 +140,33 @@ ApplicationWindow {
                             Label {
                                 text: "Бит для изменения (0-511):"
                             }
+                            
                             SpinBox {
                                 id: bitIndexInput
                                 from: 0
                                 to: 511
-                                value: 5 // по умолчанию 5-й бит
+                                value: 5  // значение по умолчанию
+                                editable: true  // ✅ Разрешить ручной ввод
+                                validator: IntValidator {
+                                    bottom: 0
+                                    top: 511
+                                }
+                                // ✅ Опционально: реакция на изменение
+                                onValueModified: {
+                                    // Авто-коррекция (на всякий случай)
+                                    value = Math.max(0, Math.min(511, value));
+                                }
                             }
+                            
                             Button {
                                 text: "Построить график лавинного эффекта"
                                 onClicked: {
-                                    // Запрашиваем данные у C++
                                     var results = crypto.analyzeAvalanche(inputText.text, bitIndexInput.value);
-
-                                    // Очищаем старый график и рисуем новый
+                                    
+                                    // Логирование для отладки
+                                    console.log("=== Avalanche Analysis ===");
+                                    console.log("Bit:", bitIndexInput.value, "→ Final:", results[79], "bits");
+                                    
                                     avalancheSeries.clear();
                                     for (var i = 0; i < results.length; i++) {
                                         avalancheSeries.append(i, results[i]);
@@ -160,7 +174,6 @@ ApplicationWindow {
                                 }
                             }
                         }
-
                         // Сам график QtCharts
                         ChartView {
                             title: "Зависимость изменившихся бит в регистрах от раунда"
