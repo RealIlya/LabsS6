@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <errno.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,12 @@
 #include <time.h>
 #include <unistd.h>
 
+#define DEFAULT_RECORDS 5
+#define LINE_SIZE 256
+#define WRITE_DELAY_MS 70
+#define VALUE_LIMIT 1000
+#define SYNC_TOKEN '1'
+
 static void sleep_ms(long ms) {
     struct timespec ts;
     ts.tv_sec = ms / 1000;
@@ -18,14 +25,16 @@ static void sleep_ms(long ms) {
 }
 
 static int parse_positive_int(const char *s, int *out) {
-    char *end = NULL;
-    long val = strtol(s, &end, 10);
+    char *end;
+    long value;
 
-    if (s == end || *end != '\0' || val <= 0 || val > 1000000) {
-        return -1;
+    errno = 0;
+    value = strtol(s, &end, 10);
+    if (*end != '\0' || value <= 0 || value > INT_MAX || errno == ERANGE) {
+        return 1;
     }
 
-    *out = (int)val;
+    *out = (int)value;
     return 0;
 }
 
@@ -39,7 +48,7 @@ static void child_work(int child_no, int write_fd, int records_per_child, int sy
         _exit(1);
     }
 
-    seed = (unsigned int)(time(NULL) ^ (unsigned int)getpid() ^ (unsigned int)(child_no * 97));
+    seed = (unsigned int)time(NULL) + (unsigned int)child_no;
     srand(seed);
 
     if (sync_read_fd >= 0) {
@@ -56,14 +65,14 @@ static void child_work(int child_no, int write_fd, int records_per_child, int sy
     fflush(stdout);
 
     for (i = 0; i < records_per_child; i++) {
-        int value = rand() % 1000;
+        int value = rand() % VALUE_LIMIT;
         fprintf(pipe_out, "P%d pid=%ld index=%d value=%d\n", child_no, (long)getpid(), i + 1, value);
         fflush(pipe_out);
-        sleep_ms(70);
+        sleep_ms(WRITE_DELAY_MS);
     }
 
     if (sync_write_fd >= 0) {
-        char token = '1';
+        char token = SYNC_TOKEN;
         if (write(sync_write_fd, &token, 1) != 1) {
             fprintf(stderr, "error: child %d cannot write sync token\n", child_no);
             fclose(pipe_out);
@@ -79,7 +88,7 @@ static void child_work(int child_no, int write_fd, int records_per_child, int sy
 }
 
 int main(int argc, char **argv) {
-    int records_per_child = 5;
+    int records_per_child = DEFAULT_RECORDS;
     int k1[2];
     int ksync[2];
     pid_t p1;
@@ -135,7 +144,7 @@ int main(int argc, char **argv) {
 
     {
         FILE *pipe_in = fdopen(k1[0], "r");
-        char line[256];
+        char line[LINE_SIZE];
 
         if (!pipe_in) {
             fprintf(stderr, "error: P0 cannot open pipe stream: %s\n", strerror(errno));
