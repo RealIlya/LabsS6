@@ -85,27 +85,40 @@ public sealed class CalculatorControl
 
         if (State == CalcState.OperationSet)
         {
+            processor.SetOperation(operation);
+            return processor.LeftResult.ToString();
+        }
+
+        if (processor.Operation != BinaryOperation.None)
+        {
             processor.SetRight(current);
-            processor.RunOperation();
+            var result = processor.RunOperation();
+            WriteToEditor(result);
         }
         else
         {
             processor.SetLeft(current);
+            WriteToEditor(current);
         }
 
         processor.SetOperation(operation);
         State = CalcState.OperationSet;
-        editor.Clear();
         return processor.LeftResult.ToString();
     }
 
     public string ExecuteFunction(UnaryFunction function)
     {
         var current = ReadCurrentNumber();
-        processor.SetLeft(current);
-        var result = processor.RunFunction(function);
-        State = CalcState.Result;
+        var result = function switch
+        {
+            UnaryFunction.Rev => current.Rev(),
+            UnaryFunction.Sqr => current.Sqr(),
+            _ => throw new InvalidOperationException("Неподдерживаемая функция.")
+        };
         WriteToEditor(result);
+        State = processor.Operation == BinaryOperation.None
+            ? CalcState.Result
+            : CalcState.Editing;
         return Display;
     }
 
@@ -132,7 +145,9 @@ public sealed class CalculatorControl
                 return Display;
             case 1: // MR
                 WriteToEditor(memory.Read());
-                State = CalcState.Result;
+                State = processor.Operation == BinaryOperation.None
+                    ? CalcState.Result
+                    : CalcState.Editing;
                 return Display;
             case 2: // M+
                 memory.Add(current);
