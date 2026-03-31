@@ -1,0 +1,168 @@
+#define _POSIX_C_SOURCE 200809L
+
+#include <errno.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
+
+static void sleep_ms(long ms) {
+    struct timespec ts;
+    ts.tv_sec = ms / 1000;
+    ts.tv_nsec = (ms % 1000) * 1000000L;
+    nanosleep(&ts, NULL);
+}
+
+static int parse_positive_int(const char *s, int *out) {
+    char *end = NULL;
+    long val = strtol(s, &end, 10);
+
+    if (s == end || *end != '\0' || val <= 0 || val > 1000000) {
+        return -1;
+    }
+
+    *out = (int)val;
+    return 0;
+}
+
+static void child_work(int child_no, int write_fd, int records_per_child, int sync_read_fd, int sync_write_fd) {
+    int i;
+    FILE *pipe_out = fdopen(write_fd, "w");
+    unsigned int seed;
+
+    if (!pipe_out) {
+        fprintf(stderr, "error: child %d cannot open pipe stream: %s\n", child_no, strerror(errno));
+        _exit(1);
+    }
+
+    seed = (unsigned int)(time(NULL) ^ (unsigned int)getpid() ^ (unsigned int)(child_no * 97));
+    srand(seed);
+
+    if (sync_read_fd >= 0) {
+        char token;
+        if (read(sync_read_fd, &token, 1) != 1) {
+            fprintf(stderr, "error: child %d cannot read sync token\n", child_no);
+            fclose(pipe_out);
+            _exit(1);
+        }
+        close(sync_read_fd);
+    }
+
+    printf("P%d(pid=%ld): start sending\n", child_no, (long)getpid());
+    fflush(stdout);
+
+    for (i = 0; i < records_per_child; i++) {
+        int value = rand() % 1000;
+        fprintf(pipe_out, "P%d pid=%ld index=%d value=%d\n", child_no, (long)getpid(), i + 1, value);
+        fflush(pipe_out);
+        sleep_ms(70);
+    }
+
+    if (sync_write_fd >= 0) {
+        char token = '1';
+        if (write(sync_write_fd, &token, 1) != 1) {
+            fprintf(stderr, "error: child %d cannot write sync token\n", child_no);
+            fclose(pipe_out);
+            _exit(1);
+        }
+        close(sync_write_fd);
+    }
+
+    printf("P%d(pid=%ld): finish sending\n", child_no, (long)getpid());
+    fflush(stdout);
+    fclose(pipe_out);
+    _exit(0);
+}
+
+int main(int argc, char **argv) {
+    int records_per_child = 5;
+    int k1[2];
+    int ksync[2];
+    pid_t p1;
+    pid_t p2;
+
+    if (argc > 2) {
+        fprintf(stderr, "usage: %s [records_per_child]\n", argv[0]);
+        return 1;
+    }
+
+    if (argc == 2 && parse_positive_int(argv[1], &records_per_child) != 0) {
+        fprintf(stderr, "error: records_per_child must be a positive integer\n");
+        return 1;
+    }
+
+    if (pipe(k1) != 0 || pipe(ksync) != 0) {
+        fprintf(stderr, "error: pipe failed: %s\n", strerror(errno));
+        return 1;
+    }
+
+    printf("P0(pid=%ld): create K1 and sync channel\n", (long)getpid());
+    fflush(stdout);
+
+    p1 = fork();
+    if (p1 < 0) {
+        fprintf(stderr, "error: fork for P1 failed: %s\n", strerror(errno));
+        return 1;
+    }
+
+    if (p1 == 0) {
+        close(k1[0]);
+        close(ksync[0]);
+        child_work(1, k1[1], records_per_child, -1, ksync[1]);
+    }
+
+    p2 = fork();
+    if (p2 < 0) {
+        fprintf(stderr, "error: fork for P2 failed: %s\n", strerror(errno));
+        kill(p1, SIGTERM);
+        waitpid(p1, NULL, 0);
+        return 1;
+    }
+
+    if (p2 == 0) {
+        close(k1[0]);
+        close(ksync[1]);
+        child_work(2, k1[1], records_per_child, ksync[0], -1);
+    }
+
+    close(k1[1]);
+    close(ksync[0]);
+    close(ksync[1]);
+
+    {
+        FILE *pipe_in = fdopen(k1[0], "r");
+        char line[256];
+
+        if (!pipe_in) {
+            fprintf(stderr, "error: P0 cannot open pipe stream: %s\n", strerror(errno));
+            kill(p1, SIGTERM);
+            kill(p2, SIGTERM);
+            waitpid(p1, NULL, 0);
+            waitpid(p2, NULL, 0);
+            close(k1[0]);
+            return 1;
+        }
+
+        printf("P0(pid=%ld): reading data from K1\n", (long)getpid());
+        fflush(stdout);
+
+        while (fgets(line, sizeof(line), pipe_in) != NULL) {
+            printf("P0: %s", line);
+            fflush(stdout);
+        }
+
+        fclose(pipe_in);
+    }
+
+    if (waitpid(p1, NULL, 0) < 0 || waitpid(p2, NULL, 0) < 0) {
+        fprintf(stderr, "error: waitpid failed: %s\n", strerror(errno));
+        return 1;
+    }
+
+    printf("P0(pid=%ld): all children finished\n", (long)getpid());
+    return 0;
+}
