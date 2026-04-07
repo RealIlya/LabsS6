@@ -1,10 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net9.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +21,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CalculatorPart1Lab3.Core\CalculatorPart1Lab3.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\ui\CalculatorPart1Lab3.WinForms\Form1.cs" Link="Ui\Form1.cs" />
+    <Compile Include="..\..\ui\CalculatorPart1Lab3.WinForms\Form1.Designer.cs" Link="Ui\Form1.Designer.cs" />
+    <Compile Include="..\..\ui\CalculatorPart1Lab3.WinForms\UiErrorMapper.cs" Link="Ui\UiErrorMapper.cs" />
   </ItemGroup>
 
 </Project>
