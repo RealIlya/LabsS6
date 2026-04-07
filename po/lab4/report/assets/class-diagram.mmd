@@ -1,0 +1,91 @@
+classDiagram
+    direction LR
+
+    class Form1 {
+        +BuildUi()
+        +RefreshUi()
+        +ShowHelp()
+    }
+
+    class UiErrorMapper {
+        <<static>>
+        +ToUserMessage(ex) string
+    }
+
+    class UniversalCalculatorControl {
+        +Mode: NumberMode
+        +State: TCtrlState
+        +ExecuteCalculatorCommand(cmd) string
+        +ExecuteOperation(op) string
+        +ExecuteFunction(fn) string
+        +ExecuteEqual() string
+    }
+
+    class AEditor {
+        <<abstract>>
+        +Value: string
+        +Edit(command) string
+        +Clear() string
+    }
+
+    class PNumberEditor {
+        +NumberBase: int
+    }
+
+    class FractionEditor
+
+    class ComplexEditor {
+        +SetBase(numberBase)
+    }
+
+    class TProcessor {
+        +LeftResult: TANumber
+        +RightOperand: TANumber
+        +Operation: BinaryOperation
+        +RunOperation() TANumber
+        +RunFunction(fn) TANumber
+    }
+
+    class TMemory {
+        +IsOn: bool
+        +Store(value)
+        +Read() TANumber
+        +Add(value)
+        +Clear(zero)
+    }
+
+    class TANumber {
+        <<abstract>>
+        +Copy() TANumber
+        +Add(other) TANumber
+        +Sub(other) TANumber
+        +Mul(other) TANumber
+        +Div(other) TANumber
+        +Sqr() TANumber
+        +Rev() TANumber
+    }
+
+    class TPNumber
+    class TFrac
+    class TComp {
+        +Re: TPNumber
+        +Im: TPNumber
+    }
+
+    AEditor <|-- PNumberEditor
+    AEditor <|-- FractionEditor
+    AEditor <|-- ComplexEditor
+
+    TANumber <|-- TPNumber
+    TANumber <|-- TFrac
+    TANumber <|-- TComp
+
+    Form1 --> UniversalCalculatorControl : uses
+    Form1 ..> UiErrorMapper : maps errors
+    UniversalCalculatorControl *-- AEditor : composition
+    UniversalCalculatorControl *-- TProcessor : composition
+    UniversalCalculatorControl *-- TMemory : composition
+    TProcessor ..> TANumber : operates
+    TMemory ..> TANumber : stores
+    TComp *-- TPNumber : composition
+    ComplexEditor *-- PNumberEditor : composition
