@@ -20,13 +20,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\CalculatorPart1Lab3.Core\CalculatorPart1Lab3.Core.csproj" />
+    <ProjectReference Include="..\..\src\UniversalCalculatorLab4.Core\UniversalCalculatorLab4.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\ui\CalculatorPart1Lab3.WinForms\Form1.cs" Link="Ui\Form1.cs" />
-    <Compile Include="..\..\ui\CalculatorPart1Lab3.WinForms\Form1.Designer.cs" Link="Ui\Form1.Designer.cs" />
-    <Compile Include="..\..\ui\CalculatorPart1Lab3.WinForms\UiErrorMapper.cs" Link="Ui\UiErrorMapper.cs" />
+    <Compile Include="..\..\ui\UniversalCalculatorLab4.WinForms\Form1.cs" Link="Ui\Form1.cs" />
+    <Compile Include="..\..\ui\UniversalCalculatorLab4.WinForms\Form1.Designer.cs" Link="Ui\Form1.Designer.cs" />
+    <Compile Include="..\..\ui\UniversalCalculatorLab4.WinForms\UiErrorMapper.cs" Link="Ui\UiErrorMapper.cs" />
   </ItemGroup>
 
 </Project>

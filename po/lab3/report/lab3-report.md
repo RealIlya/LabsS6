@@ -1,4 +1,4 @@
-# Отчёт по лабораторной работе №3
+﻿# Отчёт по лабораторной работе №3
 
 ## 1. Задание
 
@@ -649,7 +649,7 @@ public sealed class TMemory<T> where T : ICalcNumber<T>
         }
 
         number = number.Add(value);
-        IsOn = !number.IsZero();
+        IsOn = true;
     }
 
     public T Read()
@@ -673,7 +673,7 @@ public sealed class TMemory<T> where T : ICalcNumber<T>
 ### CalculatorControl.cs
 
 ```csharp
-﻿namespace CalculatorPart1Lab3.Core;
+namespace CalculatorPart1Lab3.Core;
 
 public sealed class CalculatorControl
 {
@@ -688,6 +688,8 @@ public sealed class CalculatorControl
     private readonly TPNumberEditor editor;
     private readonly TProcessor<TPNumber> processor;
     private readonly TMemory<TPNumber> memory;
+    private BinaryOperation repeatedEqualOperation = BinaryOperation.None;
+    private TPNumber? repeatedEqualOperand;
 
     public CalculatorControl(int numberBase = 10, int precision = 10)
     {
@@ -719,6 +721,7 @@ public sealed class CalculatorControl
         var leftValue = processor.LeftResult.WithBase(numberBase);
         var rightValue = processor.RightOperand.WithBase(numberBase);
         var memoryValue = memory.IsOn ? memory.Read().WithBase(numberBase) : null;
+        var repeatedOperand = repeatedEqualOperand?.WithBase(numberBase);
 
         NumberBase = numberBase;
         editor.SetBase(numberBase);
@@ -734,11 +737,14 @@ public sealed class CalculatorControl
             memory.Store(memoryValue);
         }
 
+        repeatedEqualOperand = repeatedOperand;
         State = previousState;
     }
 
     public string ExecuteEditorCommand(int command)
     {
+        ClearRepeatedEqualState();
+
         if (State is CalcState.Result or CalcState.OperationSet)
         {
             editor.Clear();
@@ -756,42 +762,81 @@ public sealed class CalculatorControl
 
     public string ExecuteOperation(BinaryOperation operation)
     {
+        ClearRepeatedEqualState();
         var current = ReadCurrentNumber();
 
         if (State == CalcState.OperationSet)
         {
+            processor.SetOperation(operation);
+            return processor.LeftResult.ToString();
+        }
+
+        if (processor.Operation != BinaryOperation.None)
+        {
             processor.SetRight(current);
-            processor.RunOperation();
+            var result = processor.RunOperation();
+            WriteToEditor(result);
         }
         else
         {
             processor.SetLeft(current);
+            WriteToEditor(current);
         }
 
         processor.SetOperation(operation);
         State = CalcState.OperationSet;
-        editor.Clear();
         return processor.LeftResult.ToString();
     }
 
     public string ExecuteFunction(UnaryFunction function)
     {
+        ClearRepeatedEqualState();
         var current = ReadCurrentNumber();
-        processor.SetLeft(current);
-        var result = processor.RunFunction(function);
-        State = CalcState.Result;
+        var result = function switch
+        {
+            UnaryFunction.Rev => current.Rev(),
+            UnaryFunction.Sqr => current.Sqr(),
+            _ => throw new InvalidOperationException("Неподдерживаемая функция.")
+        };
         WriteToEditor(result);
+        State = processor.Operation == BinaryOperation.None
+            ? CalcState.Result
+            : CalcState.Editing;
         return Display;
     }
 
     public string ExecuteEqual()
     {
-        if (State != CalcState.Result)
+        if (State == CalcState.Result)
         {
-            processor.SetRight(ReadCurrentNumber());
+            if (repeatedEqualOperation == BinaryOperation.None || repeatedEqualOperand is null)
+            {
+                return Display;
+            }
+
+            processor.SetLeft(ReadCurrentNumber());
+            processor.SetRight(repeatedEqualOperand);
+            processor.SetOperation(repeatedEqualOperation);
+        }
+        else if (processor.Operation == BinaryOperation.None)
+        {
+            var current = ReadCurrentNumber();
+            processor.SetLeft(current);
+            WriteToEditor(current);
+            ClearRepeatedEqualState();
+            State = CalcState.Result;
+            return Display;
+        }
+        else
+        {
+            var current = ReadCurrentNumber();
+            processor.SetRight(current);
+            repeatedEqualOperation = processor.Operation;
+            repeatedEqualOperand = current.Copy();
         }
 
         var result = processor.RunOperation();
+        processor.ClearOperation();
         State = CalcState.Result;
         WriteToEditor(result);
         return Display;
@@ -799,6 +844,7 @@ public sealed class CalculatorControl
 
     public string ExecuteMemoryCommand(int command)
     {
+        ClearRepeatedEqualState();
         var current = ReadCurrentNumber();
         switch (command)
         {
@@ -807,7 +853,9 @@ public sealed class CalculatorControl
                 return Display;
             case 1: // MR
                 WriteToEditor(memory.Read());
-                State = CalcState.Result;
+                State = processor.Operation == BinaryOperation.None
+                    ? CalcState.Result
+                    : CalcState.Editing;
                 return Display;
             case 2: // M+
                 memory.Add(current);
@@ -822,6 +870,7 @@ public sealed class CalculatorControl
 
     public string ExecuteClipboardCommand(int command, string? clipboardValue = null)
     {
+        ClearRepeatedEqualState();
         switch (command)
         {
             case 0:
@@ -843,6 +892,7 @@ public sealed class CalculatorControl
 
     public string Reset()
     {
+        ClearRepeatedEqualState();
         editor.Clear();
         var zero = new TPNumber(0, NumberBase, Precision);
         processor.Reset(zero, zero);
@@ -885,7 +935,14 @@ public sealed class CalculatorControl
             }
         }
     }
+
+    private void ClearRepeatedEqualState()
+    {
+        repeatedEqualOperation = BinaryOperation.None;
+        repeatedEqualOperand = null;
+    }
 }
+
 ```
 
 ### UiErrorMapper.cs
@@ -916,7 +973,7 @@ internal static class UiErrorMapper
 ### Form1.cs
 
 ```csharp
-﻿using CalculatorPart1Lab3.Core;
+using CalculatorPart1Lab3.Core;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -950,12 +1007,14 @@ public partial class Form1 : Form
         MaximizeBox = false;
         KeyPreview = true;
         KeyDown += OnFormKeyDown;
+        KeyPress += OnFormKeyPress;
 
         var menu = BuildMenu();
         Controls.Add(menu);
 
         display.SetBounds(15, 40, 455, 36);
         display.ReadOnly = true;
+        display.TabStop = false;
         display.Font = new Font("Consolas", 16f);
         display.TextAlign = HorizontalAlignment.Right;
 
@@ -1106,9 +1165,14 @@ public partial class Form1 : Form
             Text = text,
             Dock = DockStyle.Fill,
             Margin = new Padding(3),
-            Font = new Font("Segoe UI", 10f)
+            Font = new Font("Segoe UI", 10f),
+            TabStop = false
         };
-        button.Click += onClick;
+        button.Click += (sender, args) =>
+        {
+            onClick(sender, args);
+            ActiveControl = null;
+        };
         hints.SetToolTip(button, hint);
         panel.Controls.Add(button, col, row);
 
@@ -1237,92 +1301,168 @@ public partial class Form1 : Form
         if (e.Control && e.KeyCode == Keys.C)
         {
             CopyToClipboard();
-            e.SuppressKeyPress = true;
+            ConsumeKey(e);
             return;
         }
 
         if (e.Control && e.KeyCode == Keys.V)
         {
             PasteFromClipboard();
-            e.SuppressKeyPress = true;
+            ConsumeKey(e);
             return;
         }
 
-        if (TryHandleDigitKey(e.KeyCode, out var digit))
+        if (TryHandleNumericPadDigitKey(e.KeyCode, out var digit))
         {
             RunEditor(digit);
-            e.SuppressKeyPress = true;
+            ConsumeKey(e);
             return;
         }
 
         switch (e.KeyCode)
         {
-            case Keys.Decimal:
-            case Keys.OemPeriod:
-                RunEditor(16);
-                e.SuppressKeyPress = true;
-                break;
             case Keys.Back:
                 RunEditor(17);
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Delete:
             case Keys.Escape:
                 ResetAll();
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Enter:
                 RunEqual();
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Add:
                 RunOperation(BinaryOperation.Add);
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Subtract:
-            case Keys.OemMinus:
-                RunOperation(BinaryOperation.Sub);
-                e.SuppressKeyPress = true;
+                HandleMinusFromKeyboard();
+                ConsumeKey(e);
                 break;
             case Keys.Multiply:
                 RunOperation(BinaryOperation.Mul);
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Divide:
-            case Keys.OemQuestion:
                 RunOperation(BinaryOperation.Dvd);
-                e.SuppressKeyPress = true;
-                break;
-            case Keys.Oemplus when e.Shift:
-                RunOperation(BinaryOperation.Add);
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
         }
     }
 
-    private static bool TryHandleDigitKey(Keys key, out int digit)
+    private void OnFormKeyPress(object? sender, KeyPressEventArgs e)
+    {
+        if (TryHandleDigitChar(e.KeyChar, out var digit))
+        {
+            RunEditor(digit);
+            e.Handled = true;
+            return;
+        }
+
+        switch (e.KeyChar)
+        {
+            case '.':
+            case ',':
+                RunEditor(16);
+                e.Handled = true;
+                break;
+            case '+':
+                RunOperation(BinaryOperation.Add);
+                e.Handled = true;
+                break;
+            case '-':
+                HandleMinusFromKeyboard();
+                e.Handled = true;
+                break;
+            case '*':
+                RunOperation(BinaryOperation.Mul);
+                e.Handled = true;
+                break;
+            case '/':
+                RunOperation(BinaryOperation.Dvd);
+                e.Handled = true;
+                break;
+            case '=':
+                RunEqual();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private static bool TryHandleDigitChar(char ch, out int digit)
     {
         digit = -1;
 
-        if (key >= Keys.D0 && key <= Keys.D9)
+        if (ch >= '0' && ch <= '9')
         {
-            digit = key - Keys.D0;
+            digit = ch - '0';
             return true;
         }
 
-        if (key >= Keys.NumPad0 && key <= Keys.NumPad9)
+        if (ch >= 'A' && ch <= 'F')
         {
-            digit = key - Keys.NumPad0;
+            digit = ch - 'A' + 10;
             return true;
         }
 
-        if (key >= Keys.A && key <= Keys.F)
+        if (ch >= 'a' && ch <= 'f')
         {
-            digit = key - Keys.A + 10;
+            digit = ch - 'a' + 10;
             return true;
         }
 
         return false;
+    }
+
+    private static bool TryHandleNumericPadDigitKey(Keys key, out int digit)
+    {
+        digit = -1;
+
+        if (key < Keys.NumPad0 || key > Keys.NumPad9)
+        {
+            return false;
+        }
+
+        digit = key - Keys.NumPad0;
+        return true;
+    }
+
+    private static void ConsumeKey(KeyEventArgs e)
+    {
+        e.Handled = true;
+        e.SuppressKeyPress = true;
+    }
+
+    private void HandleMinusFromKeyboard()
+    {
+        if (control.State is CalculatorControl.CalcState.Start or CalculatorControl.CalcState.OperationSet
+            || control.Display is "0" or "-0")
+        {
+            RunEditor(20);
+            return;
+        }
+
+        RunOperation(BinaryOperation.Sub);
+    }
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (keyData == Keys.Enter)
+        {
+            RunEqual();
+            return true;
+        }
+
+        if (keyData == Keys.Escape)
+        {
+            ResetAll();
+            return true;
+        }
+
+        return base.ProcessCmdKey(ref msg, keyData);
     }
 
     private static void ShowHelp()
@@ -1410,23 +1550,27 @@ static class Program
 
 ## 5. Тестовые наборы данных и результаты тестирования
 
+Автоматические тесты покрывают классы `TPNumber`, `TPNumberEditor`, `TProcessor`, `TMemory` и сценарии управления калькулятором через `CalculatorControl`.
+
 | № | Тестовый сценарий | Входные данные | Ожидаемый результат |
 |---|---|---|---|
 | 1 | Разбор p-ичного числа | `A.8`, основание `16` | Десятичное значение `10.5` |
 | 2 | Формирование двоичной записи | `10.5`, основание `2`, точность `4` | Строка `1010.1` |
-| 3 | Сложение чисел | `5 + 7` в основании `10` | Результат `12` |
-| 4 | Проверка `Rev` | `0` | Генерируется ошибка деления на ноль |
-| 5 | Редактирование числа | Добавление `A` в редакторе с основанием `16` | Значение редактора `A` |
-| 6 | Повторное добавление разделителя | Ввод `0.` и повторная команда разделителя | Значение остаётся `0.` |
-| 7 | Смена знака | Двойная команда `+/-` для `0` | Итоговое значение `0` |
-| 8 | Память калькулятора | `MS(5)`, затем `M+(2)`, `MR` | Из памяти читается `7` |
-| 9 | Выполнение операции | Ввод `2 + 3 =` | На дисплее `5` |
+| 3 | Цепочка бинарных операций | Ввод `2 + 2 - 3 =` | На дисплее `1` |
+| 4 | Повторное выполнение последней операции | Ввод `5 + 4 = = =` | Последовательность результатов `9`, `13`, `17` |
+| 5 | Повтор `=` без второго операнда | Ввод `5 * =` | На дисплее `25` |
+| 6 | Унарные функции в цепочке | Ввод `2 Sqr + 3 Sqr / 2 =` | На дисплее `6.5` |
+| 7 | Обратное значение в цепочке | Ввод `2 + 4 Rev =` | На дисплее `2.25` |
+| 8 | Использование памяти в выражении | `MS(3)`, затем `2 + MR =` | На дисплее `5` |
+| 9 | Сложение с памятью до нуля | `MS(3)`, затем `M+(-3)`, `MR` | Значение памяти `0`, индикатор памяти остаётся включённым |
 | 10 | Буфер обмена | Копирование `AB`, затем вставка | На дисплее `AB` |
 | 11 | Смена основания системы счисления | Ввод `10.5` при основании `10`, затем переключение на основание `2` | На дисплее `1010.1` |
+| 12 | Ввод с клавиатуры и подтверждение Enter | Ввод `2 + 3`, затем `Enter` | На дисплее `5` |
+| 13 | Сброс по Esc | Ввод `A5`, затем `Esc` | На дисплее `0` |
 
 Результат автоматического тестирования:
 
 ```text
-dotnet test lab3/tests/CalculatorPart1Lab3.Tests/CalculatorPart1Lab3.Tests.csproj
-Пройден! : не пройдено 0, пройдено 13, пропущено 0, всего 13.
+dotnet test lab3/tests/CalculatorPart1Lab3.Tests/CalculatorPart1Lab3.Tests.csproj --no-restore -p:BaseOutputPath=build/dotnet-alt-tests/
+Пройден! : не пройдено 0, пройдено 54, пропущено 0, всего 54.
 ```

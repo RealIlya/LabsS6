@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\UniversalCalculatorLab4.Core\UniversalCalculatorLab4.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="help.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="build\**\*.cs" />
+    <EmbeddedResource Remove="build\**\*" />
+    <None Remove="build\**\*" />
+  </ItemGroup>
+
+</Project>

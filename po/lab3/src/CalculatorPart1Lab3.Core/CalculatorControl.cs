@@ -13,6 +13,8 @@ public sealed class CalculatorControl
     private readonly TPNumberEditor editor;
     private readonly TProcessor<TPNumber> processor;
     private readonly TMemory<TPNumber> memory;
+    private BinaryOperation repeatedEqualOperation = BinaryOperation.None;
+    private TPNumber? repeatedEqualOperand;
 
     public CalculatorControl(int numberBase = 10, int precision = 10)
     {
@@ -44,6 +46,7 @@ public sealed class CalculatorControl
         var leftValue = processor.LeftResult.WithBase(numberBase);
         var rightValue = processor.RightOperand.WithBase(numberBase);
         var memoryValue = memory.IsOn ? memory.Read().WithBase(numberBase) : null;
+        var repeatedOperand = repeatedEqualOperand?.WithBase(numberBase);
 
         NumberBase = numberBase;
         editor.SetBase(numberBase);
@@ -59,11 +62,14 @@ public sealed class CalculatorControl
             memory.Store(memoryValue);
         }
 
+        repeatedEqualOperand = repeatedOperand;
         State = previousState;
     }
 
     public string ExecuteEditorCommand(int command)
     {
+        ClearRepeatedEqualState();
+
         if (State is CalcState.Result or CalcState.OperationSet)
         {
             editor.Clear();
@@ -81,6 +87,7 @@ public sealed class CalculatorControl
 
     public string ExecuteOperation(BinaryOperation operation)
     {
+        ClearRepeatedEqualState();
         var current = ReadCurrentNumber();
 
         if (State == CalcState.OperationSet)
@@ -108,6 +115,7 @@ public sealed class CalculatorControl
 
     public string ExecuteFunction(UnaryFunction function)
     {
+        ClearRepeatedEqualState();
         var current = ReadCurrentNumber();
         var result = function switch
         {
@@ -124,12 +132,36 @@ public sealed class CalculatorControl
 
     public string ExecuteEqual()
     {
-        if (State != CalcState.Result)
+        if (State == CalcState.Result)
         {
-            processor.SetRight(ReadCurrentNumber());
+            if (repeatedEqualOperation == BinaryOperation.None || repeatedEqualOperand is null)
+            {
+                return Display;
+            }
+
+            processor.SetLeft(ReadCurrentNumber());
+            processor.SetRight(repeatedEqualOperand);
+            processor.SetOperation(repeatedEqualOperation);
+        }
+        else if (processor.Operation == BinaryOperation.None)
+        {
+            var current = ReadCurrentNumber();
+            processor.SetLeft(current);
+            WriteToEditor(current);
+            ClearRepeatedEqualState();
+            State = CalcState.Result;
+            return Display;
+        }
+        else
+        {
+            var current = ReadCurrentNumber();
+            processor.SetRight(current);
+            repeatedEqualOperation = processor.Operation;
+            repeatedEqualOperand = current.Copy();
         }
 
         var result = processor.RunOperation();
+        processor.ClearOperation();
         State = CalcState.Result;
         WriteToEditor(result);
         return Display;
@@ -137,6 +169,7 @@ public sealed class CalculatorControl
 
     public string ExecuteMemoryCommand(int command)
     {
+        ClearRepeatedEqualState();
         var current = ReadCurrentNumber();
         switch (command)
         {
@@ -162,6 +195,7 @@ public sealed class CalculatorControl
 
     public string ExecuteClipboardCommand(int command, string? clipboardValue = null)
     {
+        ClearRepeatedEqualState();
         switch (command)
         {
             case 0:
@@ -183,6 +217,7 @@ public sealed class CalculatorControl
 
     public string Reset()
     {
+        ClearRepeatedEqualState();
         editor.Clear();
         var zero = new TPNumber(0, NumberBase, Precision);
         processor.Reset(zero, zero);
@@ -224,6 +259,12 @@ public sealed class CalculatorControl
                 editor.AddDigit(ch - 'A' + 10);
             }
         }
+    }
+
+    private void ClearRepeatedEqualState()
+    {
+        repeatedEqualOperation = BinaryOperation.None;
+        repeatedEqualOperand = null;
     }
 }
 

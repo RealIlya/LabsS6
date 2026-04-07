@@ -32,12 +32,14 @@ public partial class Form1 : Form
         MaximizeBox = false;
         KeyPreview = true;
         KeyDown += OnFormKeyDown;
+        KeyPress += OnFormKeyPress;
 
         var menu = BuildMenu();
         Controls.Add(menu);
 
         display.SetBounds(15, 40, 455, 36);
         display.ReadOnly = true;
+        display.TabStop = false;
         display.Font = new Font("Consolas", 16f);
         display.TextAlign = HorizontalAlignment.Right;
 
@@ -188,9 +190,14 @@ public partial class Form1 : Form
             Text = text,
             Dock = DockStyle.Fill,
             Margin = new Padding(3),
-            Font = new Font("Segoe UI", 10f)
+            Font = new Font("Segoe UI", 10f),
+            TabStop = false
         };
-        button.Click += onClick;
+        button.Click += (sender, args) =>
+        {
+            onClick(sender, args);
+            ActiveControl = null;
+        };
         hints.SetToolTip(button, hint);
         panel.Controls.Add(button, col, row);
 
@@ -319,92 +326,168 @@ public partial class Form1 : Form
         if (e.Control && e.KeyCode == Keys.C)
         {
             CopyToClipboard();
-            e.SuppressKeyPress = true;
+            ConsumeKey(e);
             return;
         }
 
         if (e.Control && e.KeyCode == Keys.V)
         {
             PasteFromClipboard();
-            e.SuppressKeyPress = true;
+            ConsumeKey(e);
             return;
         }
 
-        if (TryHandleDigitKey(e.KeyCode, out var digit))
+        if (TryHandleNumericPadDigitKey(e.KeyCode, out var digit))
         {
             RunEditor(digit);
-            e.SuppressKeyPress = true;
+            ConsumeKey(e);
             return;
         }
 
         switch (e.KeyCode)
         {
-            case Keys.Decimal:
-            case Keys.OemPeriod:
-                RunEditor(16);
-                e.SuppressKeyPress = true;
-                break;
             case Keys.Back:
                 RunEditor(17);
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Delete:
             case Keys.Escape:
                 ResetAll();
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Enter:
                 RunEqual();
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Add:
                 RunOperation(BinaryOperation.Add);
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Subtract:
-            case Keys.OemMinus:
-                RunOperation(BinaryOperation.Sub);
-                e.SuppressKeyPress = true;
+                HandleMinusFromKeyboard();
+                ConsumeKey(e);
                 break;
             case Keys.Multiply:
                 RunOperation(BinaryOperation.Mul);
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
             case Keys.Divide:
-            case Keys.OemQuestion:
                 RunOperation(BinaryOperation.Dvd);
-                e.SuppressKeyPress = true;
-                break;
-            case Keys.Oemplus when e.Shift:
-                RunOperation(BinaryOperation.Add);
-                e.SuppressKeyPress = true;
+                ConsumeKey(e);
                 break;
         }
     }
 
-    private static bool TryHandleDigitKey(Keys key, out int digit)
+    private void OnFormKeyPress(object? sender, KeyPressEventArgs e)
+    {
+        if (TryHandleDigitChar(e.KeyChar, out var digit))
+        {
+            RunEditor(digit);
+            e.Handled = true;
+            return;
+        }
+
+        switch (e.KeyChar)
+        {
+            case '.':
+            case ',':
+                RunEditor(16);
+                e.Handled = true;
+                break;
+            case '+':
+                RunOperation(BinaryOperation.Add);
+                e.Handled = true;
+                break;
+            case '-':
+                HandleMinusFromKeyboard();
+                e.Handled = true;
+                break;
+            case '*':
+                RunOperation(BinaryOperation.Mul);
+                e.Handled = true;
+                break;
+            case '/':
+                RunOperation(BinaryOperation.Dvd);
+                e.Handled = true;
+                break;
+            case '=':
+                RunEqual();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private static bool TryHandleDigitChar(char ch, out int digit)
     {
         digit = -1;
 
-        if (key >= Keys.D0 && key <= Keys.D9)
+        if (ch >= '0' && ch <= '9')
         {
-            digit = key - Keys.D0;
+            digit = ch - '0';
             return true;
         }
 
-        if (key >= Keys.NumPad0 && key <= Keys.NumPad9)
+        if (ch >= 'A' && ch <= 'F')
         {
-            digit = key - Keys.NumPad0;
+            digit = ch - 'A' + 10;
             return true;
         }
 
-        if (key >= Keys.A && key <= Keys.F)
+        if (ch >= 'a' && ch <= 'f')
         {
-            digit = key - Keys.A + 10;
+            digit = ch - 'a' + 10;
             return true;
         }
 
         return false;
+    }
+
+    private static bool TryHandleNumericPadDigitKey(Keys key, out int digit)
+    {
+        digit = -1;
+
+        if (key < Keys.NumPad0 || key > Keys.NumPad9)
+        {
+            return false;
+        }
+
+        digit = key - Keys.NumPad0;
+        return true;
+    }
+
+    private static void ConsumeKey(KeyEventArgs e)
+    {
+        e.Handled = true;
+        e.SuppressKeyPress = true;
+    }
+
+    private void HandleMinusFromKeyboard()
+    {
+        if (control.State is CalculatorControl.CalcState.Start or CalculatorControl.CalcState.OperationSet
+            || control.Display is "0" or "-0")
+        {
+            RunEditor(20);
+            return;
+        }
+
+        RunOperation(BinaryOperation.Sub);
+    }
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (keyData == Keys.Enter)
+        {
+            RunEqual();
+            return true;
+        }
+
+        if (keyData == Keys.Escape)
+        {
+            ResetAll();
+            return true;
+        }
+
+        return base.ProcessCmdKey(ref msg, keyData);
     }
 
     private static void ShowHelp()
