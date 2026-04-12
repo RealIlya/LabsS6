@@ -1,0 +1,740 @@
+﻿/* ============================================================
+   YoRHa Interface System — NieR: Automata Theme
+   Light / Ruins Edition
+   "Everything that lives is designed to end."
+   ============================================================ */
+
+:root {
+    /* --- Фоны — оставляем без изменений --- */
+    --nier-void: #c9c5b8;
+    --nier-black: #c9c5b8;
+    --nier-dark: #b8b4a7;
+    --nier-shadow: #a7a396;
+    --nier-gray: #8a8679;
+    --nier-mute: #3a3630; /* было #6e6a5e — темнее */
+    /* --- Текст — делаем контрастнее --- */
+    --nier-white: #0a0a0a; /* было #1a1a1a — почти чёрный */
+    --nier-cream: #141410; /* было #2a2a2a */
+    --nier-pale: #2a2620; /* было #4a4a4a */
+    /* --- Акцент --- */
+    --nier-gold: #1a1410; /* было #2a2a2a */
+    --nier-gold-lt: #0a0a08; /* было #1a1a1a */
+    --nier-gold-dk: #3a3428; /* было #4a4a4a */
+    /* --- Семантические цвета --- */
+    --nier-success: #2a5a2a; /* было #5a7a5a — насыщеннее */
+    --nier-error: #6a1a1a; /* было #8a3a3a — насыщеннее */
+    --nier-warn: #6a3a0a; /* было #8a6a4a — насыщеннее */
+    /* --- Типографика --- */
+    --font-main: 'Courier New', 'Courier', monospace;
+    --font-mono: 'Courier New', 'Courier', monospace;
+    --font-gothic: 'Courier New', 'Georgia', serif;
+    /* --- Переходы --- */
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --transition: all 0.25s var(--ease);
+}
+
+
+
+
+/* ============================================================
+   СБРОС И БАЗОВЫЕ СТИЛИ
+   ============================================================ */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--nier-void);
+    color: var(--nier-white);
+    line-height: 1.75;
+    font-weight: 400;
+    letter-spacing: 0.4px;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+    /* --- Текстура руин — тонкий зернистый шум поверх фона --- */
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.5;
+    }
+
+    /* --- Виньетка по краям --- */
+    body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: radial-gradient( ellipse at center, transparent 55%, rgba(100, 95, 85, 0.25) 100% );
+        pointer-events: none;
+        z-index: 9998;
+    }
+
+/* ============================================================
+   ТИПОГРАФИКА
+   ============================================================ */
+
+h1, h2, h3 {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--nier-white);
+    position: relative;
+}
+
+h1 {
+    font-size: 1.6rem;
+}
+
+h2 {
+    font-size: 1.05rem;
+    margin: 20px 0 18px;
+    padding-left: 18px;
+    color: var(--nier-cream);
+}
+
+    h2::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 5px;
+        height: 100%;
+        background: var(--nier-gold);
+    }
+
+h3 {
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    color: var(--nier-pale);
+}
+
+.mono {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.8px;
+    color: var(--nier-cream);
+}
+
+.label-key {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--nier-gold);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+/* ============================================================
+   ШАПКА
+   ============================================================ */
+
+.header {
+    background: var(--nier-dark);
+    border-bottom: 2px solid var(--nier-gray);
+    padding: 18px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+    /* Тонкая тёмная линия снизу шапки */
+    .header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient( 90deg, transparent, var(--nier-gray) 20%, var(--nier-gold) 50%, var(--nier-gray) 80%, transparent );
+        opacity: 0.5;
+    }
+
+    .header h1 {
+        font-size: 1.15rem;
+        letter-spacing: 5px;
+        color: var(--nier-gold);
+    }
+
+
+.username {
+    color: var(--nier-gold);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.system-status {
+    position: fixed;
+    bottom: 12px;
+    right: 20px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--nier-mute);
+    letter-spacing: 1px;
+    opacity: 0.6;
+    z-index: 100;
+}
+
+/* ============================================================
+   ССЫЛКИ
+   ============================================================ */
+
+.link {
+    color: var(--nier-gold);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    position: relative;
+    padding-bottom: 2px;
+    transition: var(--transition);
+    font-weight: 700;
+}
+
+    .link::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 1px;
+        background: var(--nier-gold-lt);
+        transition: width 0.2s var(--ease);
+    }
+
+    .link:hover {
+        color: var(--nier-gold-lt);
+    }
+
+        .link:hover::after {
+            width: 100%;
+        }
+
+    .link.admin {
+        color: var(--nier-warn);
+    }
+
+        .link.admin::after {
+            background: var(--nier-warn);
+        }
+
+        .link.admin:hover {
+            color: #6a4a2a;
+        }
+
+/* ============================================================
+   ПАНЕЛИ
+   ============================================================ */
+
+.search-panel {
+    background: var(--nier-dark);
+    border: 1px solid var(--nier-gray);
+    padding: 28px 32px;
+    margin: 25px 30px;
+    position: relative;
+}
+
+    /* Угловые декорации */
+    .search-panel::before,
+    .search-panel::after {
+        content: '';
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        border-color: var(--nier-gold);
+        border-style: solid;
+        opacity: 0.6;
+    }
+
+    .search-panel::before {
+        top: -1px;
+        left: -1px;
+        border-width: 2px 0 0 2px;
+    }
+
+    .search-panel::after {
+        bottom: -1px;
+        right: -1px;
+        border-width: 0 2px 2px 0;
+    }
+
+/* ============================================================
+   ФОРМА ПОИСКА
+   ============================================================ */
+
+.search-form {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+    margin-bottom: 8px;
+}
+
+    .search-form td {
+        padding: 4px 8px 4px 0;
+        vertical-align: middle;
+    }
+
+    .search-form label {
+        display: inline-block;
+        width: 130px;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: var(--nier-pale);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 700;
+    }
+
+/* ============================================================
+   ПОЛЯ ВВОДА
+   ============================================================ */
+
+.input {
+    width: 100%;
+    max-width: 360px;
+    padding: 9px 14px;
+    background: var(--nier-shadow);
+    border: 1px solid var(--nier-gray);
+    border-left: 3px solid transparent;
+    color: var(--nier-white);
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    outline: none;
+    transition: var(--transition);
+    appearance: none;
+}
+
+    .input::placeholder {
+        color: var(--nier-mute);
+        font-size: 0.8rem;
+    }
+
+    .input:focus {
+        border-left-color: var(--nier-gold);
+        background: var(--nier-dark);
+        color: var(--nier-gold-lt);
+    }
+
+select.input option {
+    background: var(--nier-shadow);
+    color: var(--nier-white);
+}
+
+/* ============================================================
+   КНОПКИ
+   ============================================================ */
+
+.btn {
+    display: inline-block;
+    padding: 10px 24px;
+    background: transparent;
+    border: 1px solid var(--nier-gray);
+    color: var(--nier-cream);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    margin-right: 12px;
+    position: relative;
+    font-weight: 700;
+}
+
+.btn-primary {
+    border-color: var(--nier-gold);
+    color: var(--nier-gold);
+    background: rgba(42, 42, 42, 0.06);
+}
+
+    .btn-primary:hover {
+        background: var(--nier-gold);
+        color: var(--nier-void);
+        box-shadow: 2px 2px 0 var(--nier-mute);
+    }
+
+    .btn-primary:active {
+        transform: scale(0.98);
+    }
+
+.btn-secondary {
+    border-color: var(--nier-mute);
+    color: var(--nier-mute);
+}
+
+    .btn-secondary:hover {
+        border-color: var(--nier-pale);
+        color: var(--nier-pale);
+        background: rgba(42, 42, 42, 0.06);
+    }
+
+/* ============================================================
+   ТАБЛИЦА КНИГ
+   ============================================================ */
+
+.books-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    margin-top: 10px;
+}
+
+    .books-grid th {
+        background: var(--nier-shadow);
+        color: var(--nier-pale);
+        padding: 10px 14px;
+        text-align: left;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border-bottom: 2px solid var(--nier-gray);
+    }
+
+    .books-grid td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--nier-gray);
+        color: var(--nier-cream);
+        vertical-align: middle;
+        /*transition: var(--transition);*/
+        background: var(--nier-dark);
+    }
+
+    .books-grid tr:last-child td {
+        border-bottom: none;
+    }
+
+/*.books-grid tr:hover td {
+        background: var(--nier-shadow);
+        border-left: 3px solid var(--nier-gold);
+        padding-left: 11px;
+        color: var(--nier-white);
+        transition: none;
+    }*/
+
+/* Колонки */
+.col-title {
+    max-width: 200px;
+    font-weight: 700;
+    color: var(--nier-white);
+}
+
+.col-author {
+    max-width: 150px;
+}
+
+.col-year {
+    width: 60px;
+    text-align: center;
+    color: var(--nier-pale);
+}
+
+.col-genre {
+    width: 120px;
+}
+
+.col-available {
+    width: 80px;
+    text-align: center;
+}
+
+.col-actions {
+    width: 210px;
+    white-space: nowrap;
+}
+
+/* ============================================================
+   ACTION LINKS
+   ============================================================ */
+
+.action-link {
+    color: var(--nier-mute);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.8px;
+    margin-right: 10px;
+    transition: var(--transition);
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+    .action-link:hover {
+        color: var(--nier-gold-lt);
+    }
+
+    .action-link.book-btn {
+        color: var(--nier-success);
+    }
+
+        .action-link.book-btn:hover {
+            color: #3a5a3a;
+        }
+
+/* ============================================================
+   СТАТУСЫ
+   ============================================================ */
+
+.status-available {
+    color: var(--nier-success);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.status-unavailable {
+    color: var(--nier-error);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+/* ============================================================
+   ВАЛИДАТОРЫ И ОШИБКИ
+   ============================================================ */
+
+.error {
+    display: block;
+    color: var(--nier-error);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+}
+
+    .error::before {
+        content: '[ERR]  ';
+        opacity: 0.7;
+    }
+
+.error-text {
+    color: var(--nier-error);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+.error-summary {
+    background: rgba(138, 58, 58, 0.08);
+    border-left: 3px solid var(--nier-error);
+    color: var(--nier-error);
+    padding: 12px 18px;
+    margin: 15px 0;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================================
+   СООБЩЕНИЯ
+   ============================================================ */
+
+.message {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 10px 16px;
+    margin-top: 16px;
+    letter-spacing: 0.5px;
+    border-left: 3px solid transparent;
+    font-weight: 700;
+}
+
+    .message.success {
+        color: var(--nier-success);
+        border-color: var(--nier-success);
+        background: rgba(90, 122, 90, 0.08);
+    }
+
+        .message.success::before {
+            content: '[OK]  ';
+            opacity: 0.7;
+        }
+
+    .message.error {
+        color: var(--nier-error);
+        border-color: var(--nier-error);
+        background: rgba(138, 58, 58, 0.08);
+    }
+
+/* ============================================================
+   ПАНЕЛЬ РЕЗУЛЬТАТОВ
+   ============================================================ */
+
+.results-panel {
+    background: var(--nier-dark);
+    border: 1px solid var(--nier-gray);
+    padding: 20px 28px;
+    margin: 0 30px 25px;
+    position: relative;
+}
+
+    .results-panel::before,
+    .results-panel::after {
+        content: '';
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-color: var(--nier-gray);
+        border-style: solid;
+        opacity: 0.7;
+    }
+
+    .results-panel::before {
+        top: -1px;
+        right: -1px;
+        border-width: 2px 2px 0 0;
+    }
+
+    .results-panel::after {
+        bottom: -1px;
+        left: -1px;
+        border-width: 0 0 2px 2px;
+    }
+
+.results-count {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--nier-pale);
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+/* ============================================================
+   КУРСОР
+   ============================================================ */
+
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+.cursor::after {
+    content: '▌';
+    color: var(--nier-gold);
+    animation: blink 1.2s step-start infinite;
+    margin-left: 2px;
+}
+
+/* ============================================================
+   АНИМАЦИИ
+   ============================================================ */
+
+/*@keyframes scanIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+        filter: blur(1px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: none;
+    }
+}
+
+.search-panel,
+.results-panel {
+    animation: scanIn 0.6s var(--ease) both;
+}*/
+
+/* ============================================================
+   АДАПТИВНОСТЬ
+   ============================================================ */
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+        padding: 16px 20px;
+    }
+
+    .search-panel,
+    .results-panel {
+        margin: 12px;
+        padding: 20px 18px;
+    }
+
+    .search-form td {
+        display: block;
+        width: 100%;
+        padding: 3px 0;
+    }
+
+    .search-form label {
+        display: block;
+        margin-bottom: 4px;
+        width: auto;
+    }
+
+    .input {
+        max-width: 100%;
+    }
+
+    .btn {
+        width: 100%;
+        margin: 6px 0;
+        text-align: center;
+    }
+
+    .books-grid {
+        font-size: 0.75rem;
+    }
+
+        .books-grid th,
+        .books-grid td {
+            padding: 8px;
+        }
+
+    .col-year,
+    .col-genre {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .header h1::before {
+        content: '';
+    }
+
+    .search-panel::before,
+    .search-panel::after,
+    .results-panel::before,
+    .results-panel::after {
+        display: none;
+    }
+
+    .search-panel,
+    .results-panel {
+        animation: none !important;
+    }
+}
