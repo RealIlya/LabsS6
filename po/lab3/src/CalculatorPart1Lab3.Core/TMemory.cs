@@ -1,4 +1,4 @@
-namespace CalculatorPart1Lab3.Core;
+﻿namespace CalculatorPart1Lab3.Core;
 
 public sealed class TMemory<T> where T : ICalcNumber<T>
 {
@@ -35,7 +35,7 @@ public sealed class TMemory<T> where T : ICalcNumber<T>
         }
 
         number = number.Add(value);
-        IsOn = !number.IsZero();
+        IsOn = true;
     }
 
     public T Read()

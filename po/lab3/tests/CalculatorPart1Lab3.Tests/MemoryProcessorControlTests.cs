@@ -18,6 +18,41 @@ public class MemoryProcessorControlTests
     }
 
     [Fact]
+    public void Memory_Add_ToZeroValue_LeavesMemoryOn()
+    {
+        var zero = new TPNumber(0, 10, 4);
+        var memory = new TMemory<TPNumber>(zero);
+        memory.Store(new TPNumber(3, 10, 4));
+
+        memory.Add(new TPNumber(-3, 10, 4));
+
+        Assert.True(memory.IsOn);
+        Assert.Equal("0", memory.Read().ToString());
+    }
+
+    [Fact]
+    public void Memory_Clear_ResetsStoredValueAndTurnsOff()
+    {
+        var zero = new TPNumber(0, 10, 4);
+        var memory = new TMemory<TPNumber>(zero);
+        memory.Store(new TPNumber(5, 10, 4));
+
+        memory.Clear(zero);
+
+        Assert.False(memory.IsOn);
+        Assert.Equal("0", memory.Read().ToString());
+    }
+
+    [Fact]
+    public void Memory_Constructor_NullDefaultValue_ThrowsRussianMessage()
+    {
+        var ex = Assert.Throws<ArgumentNullException>(() => new TMemory<TPNumber>(null!));
+
+        Assert.Equal("defaultValue", ex.ParamName);
+        Assert.Contains("не должно быть null", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Processor_RunOperation_AddsOperands()
     {
         var proc = new TProcessor<TPNumber>(new TPNumber(0, 10, 4), new TPNumber(0, 10, 4));
@@ -27,6 +62,45 @@ public class MemoryProcessorControlTests
 
         var result = proc.RunOperation();
         Assert.Equal("7", result.ToString());
+    }
+
+    [Fact]
+    public void Processor_Reset_ClearsOperationAndRestoresDefaults()
+    {
+        var leftDefault = new TPNumber(1, 10, 4);
+        var rightDefault = new TPNumber(2, 10, 4);
+        var proc = new TProcessor<TPNumber>(leftDefault, rightDefault);
+        proc.SetLeft(new TPNumber(7, 10, 4));
+        proc.SetRight(new TPNumber(8, 10, 4));
+        proc.SetOperation(BinaryOperation.Sub);
+        proc.Reset(leftDefault, rightDefault);
+
+        Assert.Equal(BinaryOperation.None, proc.Operation);
+        Assert.Equal("1", proc.LeftResult.ToString());
+        Assert.Equal("2", proc.RightOperand.ToString());
+        Assert.Equal(string.Empty, proc.Error);
+    }
+
+    [Fact]
+    public void Processor_ClearOperation_SetsOperationToNone()
+    {
+        var proc = new TProcessor<TPNumber>(new TPNumber(0, 10, 4), new TPNumber(0, 10, 4));
+        proc.SetOperation(BinaryOperation.Mul);
+
+        proc.ClearOperation();
+
+        Assert.Equal(BinaryOperation.None, proc.Operation);
+    }
+
+    [Fact]
+    public void Processor_RunFunction_SquaresLeftOperand()
+    {
+        var proc = new TProcessor<TPNumber>(new TPNumber(3, 10, 4), new TPNumber(0, 10, 4));
+
+        var result = proc.RunFunction(UnaryFunction.Sqr);
+
+        Assert.Equal("9", result.ToString());
+        Assert.Equal("9", proc.LeftResult.ToString());
     }
 
     [Fact]
@@ -289,5 +363,58 @@ public class MemoryProcessorControlTests
         var result = control.ExecuteEqual();
 
         Assert.Equal("8", result);
+    }
+
+    [Fact]
+    public void Control_NewOperationAfterEqual_DoesNotReusePreviousOperation()
+    {
+        var control = new CalculatorControl(10, 4);
+        control.ExecuteEditorCommand(2);
+        control.ExecuteOperation(BinaryOperation.Add);
+        control.ExecuteEditorCommand(3);
+
+        Assert.Equal("5", control.ExecuteEqual());
+
+        control.ExecuteOperation(BinaryOperation.Mul);
+        control.ExecuteEditorCommand(4);
+        var result = control.ExecuteEqual();
+
+        Assert.Equal("20", result);
+    }
+
+    [Fact]
+    public void Control_ExecuteEqual_RepeatsLastOperation()
+    {
+        var control = new CalculatorControl(10, 4);
+        control.ExecuteEditorCommand(5);
+        control.ExecuteOperation(BinaryOperation.Add);
+        control.ExecuteEditorCommand(4);
+
+        Assert.Equal("9", control.ExecuteEqual());
+        Assert.Equal("13", control.ExecuteEqual());
+        Assert.Equal("17", control.ExecuteEqual());
+    }
+
+    [Fact]
+    public void Control_ExecuteEqual_AfterOperator_UsesDisplayedValueAsBothOperands()
+    {
+        var control = new CalculatorControl(10, 4);
+        control.ExecuteEditorCommand(5);
+        control.ExecuteOperation(BinaryOperation.Mul);
+
+        var result = control.ExecuteEqual();
+
+        Assert.Equal("25", result);
+    }
+
+    [Fact]
+    public void Control_ExecuteEqual_WithoutPendingOperation_ReturnsCurrentValue()
+    {
+        var control = new CalculatorControl(10, 4);
+        control.ExecuteEditorCommand(5);
+
+        var result = control.ExecuteEqual();
+
+        Assert.Equal("5", result);
     }
 }

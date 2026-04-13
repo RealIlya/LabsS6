@@ -1,0 +1,66 @@
+﻿classDiagram
+    direction LR
+
+    class Form1 {
+        +BuildUi()
+        +RefreshUi()
+        +ShowHelp()
+    }
+
+    class UiErrorMapper {
+        <<static>>
+        +ToUserMessage(ex) string
+    }
+
+    class CalculatorControl {
+        +NumberBase: int
+        +Precision: int
+        +State: CalcState
+        +ExecuteEditorCommand(cmd) string
+        +ExecuteOperation(op) string
+        +ExecuteFunction(fn) string
+        +ExecuteEqual() string
+    }
+
+    class TPNumberEditor {
+        +Value: string
+        +Edit(command)
+        +Clear()
+    }
+
+    class TProcessorTPNumber["TProcessor<TPNumber>"] {
+        +LeftResult: TPNumber
+        +RightOperand: TPNumber
+        +Operation: BinaryOperation
+        +RunOperation() TPNumber
+        +RunFunction(fn) TPNumber
+    }
+
+    class TMemoryTPNumber["TMemory<TPNumber>"] {
+        +IsOn: bool
+        +Store(value)
+        +Read() TPNumber
+        +Add(value)
+        +Clear(zero)
+    }
+
+    class TPNumber {
+        +Value: double
+        +NumberBase: int
+        +Precision: int
+        +Add(other) TPNumber
+        +Sub(other) TPNumber
+        +Mul(other) TPNumber
+        +Div(other) TPNumber
+        +Sqr() TPNumber
+        +Rev() TPNumber
+    }
+
+    Form1 --> CalculatorControl : uses
+    Form1 ..> UiErrorMapper : maps errors
+    CalculatorControl *-- TPNumberEditor : composition
+    CalculatorControl *-- TProcessorTPNumber : composition
+    CalculatorControl *-- TMemoryTPNumber : composition
+    CalculatorControl ..> TPNumber : parses
+    TProcessorTPNumber ..> TPNumber : operates
+    TMemoryTPNumber ..> TPNumber : stores
