@@ -239,6 +239,8 @@
                         <div class="slot-reel" style="width: 36px; height: 44px; background: #0a0a0a; border: 2px solid #6a5a40; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: #c9c5b8; font-family: monospace;">?</div>
                         <div class="slot-reel" style="width: 36px; height: 44px; background: #0a0a0a; border: 2px solid #6a5a40; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: #c9c5b8; font-family: monospace;">?</div>
                         <div class="slot-reel" style="width: 36px; height: 44px; background: #0a0a0a; border: 2px solid #6a5a40; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: #c9c5b8; font-family: monospace;">?</div>
+                        <div class="slot-reel" style="width: 36px; height: 44px; background: #0a0a0a; border: 2px solid #6a5a40; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: #c9c5b8; font-family: monospace;">?</div>
+                        <div class="slot-reel" style="width: 36px; height: 44px; background: #0a0a0a; border: 2px solid #6a5a40; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: #c9c5b8; font-family: monospace;">?</div>
                     </div>
                     <button type="button" id="btn-spin" onclick="spinSlots()" style="background: #6a3a0a; color: #c9c5b8; border: none; padding: 6px 18px; font-family: monospace; font-size: 12px; font-weight: bold; cursor: pointer; letter-spacing: 1px; text-transform: uppercase;">🎲 Крутить</button>
                     <div id="slot-result" style="margin-top: 8px; font-size: 11px; color: #141410; min-height: 16px;"></div>
@@ -256,8 +258,9 @@
             var btn = document.getElementById('btn-spin');
             var result = document.getElementById('slot-result');
             var spinning = false;
-            var symbols = ['0','1','2','3','4','5','6','7','8','9'];
+            var symbols = ['a','b','o','📎','♦️', '😊', '🐸', '🤡', '🤖', '🐦‍🔥'];
             var intervals = [];
+            const slotsCount = 5;
 
             window.spinSlots = function() {
                 if (spinning) return;
@@ -267,39 +270,76 @@
                 result.innerHTML = '';
 
                 // Анимация вращения
-                for (var i = 0; i < 3; i++) {
-                    (function(idx) {
-                        intervals[idx] = setInterval(function() {
-                            reels[idx].textContent = symbols[Math.floor(Math.random() * symbols.length)];
-                        }, 80);
-                    })(i);
+                for (let i = 0; i < slotsCount; i++) {
+                    intervals[i] = setInterval(function() {
+                        reels[i].textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                    }, 80);
                 }
 
                 // Остановка по очереди
-                var finalNums = [
-                    Math.floor(Math.random() * 10),
-                    Math.floor(Math.random() * 10),
-                    Math.floor(Math.random() * 10)
+                const finalNums = [
+                    symbols[Math.floor(Math.random() * symbols.length)],
+                    symbols[Math.floor(Math.random() * symbols.length)],
+                    symbols[Math.floor(Math.random() * symbols.length)],
+                    symbols[Math.floor(Math.random() * symbols.length)],
+                    symbols[Math.floor(Math.random() * symbols.length)]
                 ];
 
-                setTimeout(function() { clearInterval(intervals[0]); reels[0].textContent = finalNums[0]; }, 800);
-                setTimeout(function() { clearInterval(intervals[1]); reels[1].textContent = finalNums[1]; }, 1200);
-                setTimeout(function() {
-                    clearInterval(intervals[2]);
-                    reels[2].textContent = finalNums[2];
-                    // Результат
-                    var sum = finalNums[0] + finalNums[1] + finalNums[2];
-                    var discount = sum * 3;
-                    var triple = (finalNums[0] === finalNums[1] && finalNums[1] === finalNums[2]);
-                    if (triple) {
-                        result.innerHTML = '<b style="font-size:14px;">🎉 ДЖЕКПОТ! Скидка 99%!</b>';
-                    } else {
-                        result.innerHTML = 'Ваша скидка: <b>' + discount + '%</b> на книги Абобы!';
-                    }
-                    spinning = false;
-                    btn.disabled = false;
-                    btn.style.opacity = '1';
-                }, 1600);
+                function lettersDiscount(chars) {
+                    const total = chars.length || 0;
+                    if (total === 0) return { letters: 0, total: 0, percent: 0 };
+
+                    const isLetter = ch => /^\p{L}$/u.test(ch);
+                    const letters = chars.reduce((n, ch) => n + (isLetter(ch) ? 1 : 0), 0);
+                    const percent = Math.round((letters / total) * 100);
+
+                    return { letters, total, percent };
+                }
+
+                result.innerHTML = '<b><i>Thinking...</i></b>';                
+                for (let i = 0; i < slotsCount; i++) {
+                    setTimeout(function () {
+                        clearInterval(intervals[i]);
+                        reels[i].textContent = finalNums[i];
+
+                        if (i === slotsCount - 1) {
+                            // Результат
+                            //const sum = finalNums[0] + finalNums[1] + finalNums[2];
+                            //var discount = sum * 3;
+                            //var triple = (finalNums[0] === finalNums[1] && finalNums[1] === finalNums[2]);
+                            const finalString = finalNums.join();
+                            const triple = finalString === "aboba";
+                            const { percent: discount } = lettersDiscount(finalNums);
+                            if (triple) {
+                                result.innerHTML = '<b style="font-size:14px;">🎉 ДЖЕКПОТ! Скидка 99%!</b>';
+                            } else {
+                                result.innerHTML = 'Ваша скидка: <b>' + discount + '%</b> на книги Абобы!';
+                            }
+                            spinning = false;
+                            btn.disabled = false;
+                            btn.style.opacity = '1';
+                        }
+                    }, 800 + 400 * i);
+                }                
+
+                //setTimeout(function() { clearInterval(intervals[0]); reels[0].textContent = finalNums[0]; }, 800);
+                //setTimeout(function() { clearInterval(intervals[1]); reels[1].textContent = finalNums[1]; }, 1200);
+                //setTimeout(function() {
+                //    clearInterval(intervals[2]);
+                //    reels[2].textContent = finalNums[2];
+                //    // Результат
+                //    var sum = finalNums[0] + finalNums[1] + finalNums[2];
+                //    var discount = sum * 3;
+                //    var triple = (finalNums[0] === finalNums[1] && finalNums[1] === finalNums[2]);
+                //    if (triple) {
+                //        result.innerHTML = '<b style="font-size:14px;">🎉 ДЖЕКПОТ! Скидка 99%!</b>';
+                //    } else {
+                //        result.innerHTML = 'Ваша скидка: <b>' + discount + '%</b> на книги Абобы!';
+                //    }
+                //    spinning = false;
+                //    btn.disabled = false;
+                //    btn.style.opacity = '1';
+                //}, 1600);
             };
         })();
     </script>
