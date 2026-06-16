@@ -1,0 +1,101 @@
+\documentclass[9pt,a4paper]{extarticle}
+
+\usepackage{fontspec}
+\usepackage[russian]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{fancyvrb}
+\usepackage{fvextra}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{pgfpages}
+
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setmonofont{Consolas}[Scale=MatchLowercase]
+
+% Малые поля внутри каждой логической страницы.
+\geometry{
+  paper=a4paper,
+  left=7mm,
+  right=7mm,
+  top=7mm,
+  bottom=8mm,
+  includefoot
+}
+
+% Печать 4 логических страниц на одном физическом листе A4.
+\pgfpagesuselayout{4 on 1}[a4paper,landscape,border shrink=1mm]
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=black
+}
+
+\pagestyle{plain}
+\setstretch{0.96}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt plus 0.4pt minus 0.3pt}
+\setlength{\abovedisplayskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowdisplayskip}{3pt plus 1pt minus 1pt}
+\setlength{\abovedisplayshortskip}{2pt plus 1pt minus 1pt}
+\setlength{\belowdisplayshortskip}{2pt plus 1pt minus 1pt}
+\setlength{\jot}{1pt}
+
+\titleformat{\section}
+  {\normalfont\bfseries\large}
+  {\thesection}
+  {0.45em}
+  {}
+\titlespacing*{\section}{0pt}{5pt plus 1pt minus 1pt}{3pt}
+
+\titleformat{\subsection}
+  {\normalfont\bfseries\normalsize}
+  {\thesubsection}
+  {0.45em}
+  {}
+\titlespacing*{\subsection}{0pt}{4pt plus 1pt minus 1pt}{2pt}
+
+\titleformat{\subsubsection}
+  {\normalfont\bfseries\small}
+  {\thesubsubsection}
+  {0.45em}
+  {}
+\titlespacing*{\subsubsection}{0pt}{3pt plus 1pt minus 1pt}{1pt}
+
+\setlist{
+  nosep,
+  leftmargin=*,
+  topsep=1pt,
+  partopsep=0pt,
+  parsep=0pt,
+  itemsep=1pt
+}
+\setlist[enumerate]{label=\arabic*.}
+
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+  breaklines,
+  breaksymbolleft={},
+  fontsize=\footnotesize,
+  commandchars=\\\{\}
+}
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{
+  breaklines,
+  breaksymbolleft={},
+  fontsize=\footnotesize
+}
+
+\newcommand{\tightlist}{}
+\sloppy
+
+\begin{document}
+\IfFileExists{e-print-body.tex}
+  {\input{e-print-body.tex}}
+  {\input{for-exam/variants/e-print-body.tex}}
+\end{document}

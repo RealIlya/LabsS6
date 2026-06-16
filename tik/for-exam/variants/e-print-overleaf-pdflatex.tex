@@ -1,0 +1,98 @@
+\documentclass[8pt,a4paper,landscape]{extarticle}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{cmap}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{fancyvrb}
+\usepackage{fvextra}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{multicol}
+
+\geometry{
+  left=5mm,
+  right=5mm,
+  top=5mm,
+  bottom=6mm
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=black,
+  unicode=true
+}
+
+\pagestyle{empty}
+\setstretch{0.92}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.2pt plus 0.3pt minus 0.2pt}
+\setlength{\columnsep}{5mm}
+\setlength{\columnseprule}{0.15pt}
+\setlength{\abovedisplayskip}{2pt plus 0.5pt minus 0.5pt}
+\setlength{\belowdisplayskip}{2pt plus 0.5pt minus 0.5pt}
+\setlength{\abovedisplayshortskip}{1pt plus 0.5pt minus 0.5pt}
+\setlength{\belowdisplayshortskip}{1pt plus 0.5pt minus 0.5pt}
+\setlength{\jot}{0.5pt}
+
+\titleformat{\section}
+  {\normalfont\bfseries\normalsize}
+  {\thesection}
+  {0.35em}
+  {}
+\titlespacing*{\section}{0pt}{3pt plus 1pt minus 1pt}{1pt}
+
+\titleformat{\subsection}
+  {\normalfont\bfseries\small}
+  {\thesubsection}
+  {0.35em}
+  {}
+\titlespacing*{\subsection}{0pt}{3pt plus 1pt minus 1pt}{1pt}
+
+\titleformat{\subsubsection}
+  {\normalfont\bfseries\footnotesize}
+  {\thesubsubsection}
+  {0.35em}
+  {}
+\titlespacing*{\subsubsection}{0pt}{2pt plus 0.5pt minus 0.5pt}{1pt}
+
+\setlist{
+  nosep,
+  leftmargin=*,
+  topsep=0.5pt,
+  partopsep=0pt,
+  parsep=0pt,
+  itemsep=0.5pt
+}
+\setlist[enumerate]{label=\arabic*.}
+
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+  breaklines,
+  breaksymbolleft={},
+  fontsize=\scriptsize,
+  commandchars=\\\{\}
+}
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{
+  breaklines,
+  breaksymbolleft={},
+  fontsize=\scriptsize
+}
+
+\newcommand{\tightlist}{}
+\sloppy
+
+\begin{document}
+\begin{multicols*}{4}
+\IfFileExists{e-print-body.tex}
+  {\input{e-print-body.tex}}
+  {\input{for-exam/variants/e-print-body.tex}}
+\end{multicols*}
+\end{document}

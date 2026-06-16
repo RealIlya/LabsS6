@@ -22,7 +22,7 @@ Use this default order unless the student asks otherwise:
 3. PRG/PSP and LFSR: seed, taps, polynomial, period, balance, correlation.
 4. Hashes: collision, birthday attack, MAC, digital signatures.
 5. Public-key crypto: Diffie-Hellman, RSA, signatures.
-6. Mixed exam variants from `for-exam/Семестр2_пробные_экзаменационные_варианты.md`.
+6. Mixed exam variants from `for-exam/variants/Семестр2_пробные_экзаменационные_варианты.md`.
 
 ## Task Handling
 
@@ -36,9 +36,9 @@ Use this default order unless the student asks otherwise:
 
 Use local materials first:
 
-- `for-exam/Семестр2_экзамен-подготовка.md`
-- `for-exam/Семестр2_Задачи_из_лекций-исправленные.md`
-- `for-exam/Семестр2_пробные_экзаменационные_варианты.md`
+- `for-exam/topics/Семестр2_экзамен-подготовка.md`
+- `for-exam/tasks/Семестр2_Задачи_из_лекций-исправленные.md`
+- `for-exam/variants/Семестр2_пробные_экзаменационные_варианты.md`
 - lab folders `../lab1` through `../lab6`
 - PDFs in `../lectures/` when clarification is needed
 
@@ -67,3 +67,4 @@ For larger explanations, use headings but avoid long lectures. The student shoul
 - Birthday attack finds any collision in about `$2^{n/2}$` attempts for an `$n$-bit hash.
 - Diffie-Hellman equality follows from `$g^{ab} = g^{ba}$` modulo `$p$`.
 - In RSA, public key is `$(e, n)`, private key is `$(d, n)`.
+
