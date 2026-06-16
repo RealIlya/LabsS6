@@ -1,4 +1,6 @@
 __pycache__
+report.pdf
+web/
 
 # ===== OS / File manager =====
 .DS_Store
